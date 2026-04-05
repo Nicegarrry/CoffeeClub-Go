@@ -6,7 +6,6 @@ import { useFonts, Fraunces_700Bold, Fraunces_400Regular_Italic } from '@expo-go
 import { DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider, useTheme } from '../src/hooks/useTheme';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -39,11 +38,11 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <GestureHandlerRootView style={styles.container} onLayout={onLayoutReady}>
+    <View style={styles.container} onLayout={onLayoutReady}>
       <ThemeProvider>
         <InnerLayout />
       </ThemeProvider>
-    </GestureHandlerRootView>
+    </View>
   );
 }
 
