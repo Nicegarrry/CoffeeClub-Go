@@ -1,0 +1,101 @@
+export interface DbUser {
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  bio: string;
+  location: string;
+  created_at: string;
+}
+
+export interface DbMachine {
+  id: string;
+  user_id: string;
+  name: string;
+  brand: string;
+  type: 'espresso' | 'filter' | 'both';
+  burr_size: string;
+  notes: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface DbGrinder {
+  id: string;
+  user_id: string;
+  name: string;
+  brand: string;
+  burr_type: 'flat' | 'conical' | 'blade';
+  notes: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface DbBean {
+  id: string;
+  user_id: string;
+  name: string;
+  roaster: string;
+  origin: string;
+  process: 'washed' | 'natural' | 'honey';
+  roast_level: 'light' | 'light-med' | 'medium' | 'medium-dark' | 'dark';
+  tasting_notes: string[];
+  stock_grams: number;
+  color: string;
+  is_active: boolean;
+  purchase_date: string | null;
+  roast_date: string | null;
+  created_at: string;
+}
+
+export interface DbBrew {
+  id: string;
+  user_id: string;
+  bean_id: string | null;
+  machine_id: string | null;
+  grinder_id: string | null;
+  name: string;
+  brew_type: 'espresso' | 'latte' | 'flat white' | 'filter' | 'pour over' | 'cold brew' | 'other';
+  rating: number;
+  dose_in_grams: number | null;
+  yield_out_grams: number | null;
+  brew_time_seconds: number | null;
+  grind_setting: string | null;
+  tasting_notes: string[];
+  photo_url: string | null;
+  is_public: boolean;
+  created_at: string;
+}
+
+export interface DbFollow {
+  follower_id: string;
+  following_id: string;
+  created_at: string;
+}
+
+export interface DbLike {
+  user_id: string;
+  brew_id: string;
+  created_at: string;
+}
+
+// Joined types for common queries
+export interface BrewWithUser extends DbBrew {
+  user: Pick<DbUser, 'id' | 'username' | 'display_name' | 'avatar_url'>;
+}
+
+export interface BrewWithDetails extends DbBrew {
+  user: Pick<DbUser, 'id' | 'username' | 'display_name' | 'avatar_url'>;
+  bean: Pick<DbBean, 'id' | 'name' | 'roaster' | 'color'> | null;
+  machine: Pick<DbMachine, 'id' | 'name'> | null;
+  grinder: Pick<DbGrinder, 'id' | 'name'> | null;
+  like_count: number;
+  is_liked: boolean;
+}
+
+export interface UserProfile extends DbUser {
+  brew_count: number;
+  follower_count: number;
+  following_count: number;
+  is_following: boolean;
+}

@@ -13,6 +13,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { useRouter, usePathname } from 'expo-router';
 import { useTheme } from '../../hooks/useTheme';
 import { Fonts } from '../../constants/theme';
 import { hapticLight } from '../../services/device';
@@ -23,18 +24,24 @@ interface Tab {
   key: string;
   label: string;
   icon: string;
+  route: string;
 }
 
 const tabs: Tab[] = [
-  { key: 'home', label: 'Home', icon: '\u2302' },
-  { key: 'explore', label: 'Explore', icon: '\u25CB' },
-  { key: 'log', label: 'Log', icon: '\u25A6' },
-  { key: 'profile', label: 'Profile', icon: '\u25CF' },
+  { key: 'home', label: 'Home', icon: '\u2302', route: '/' },
+  { key: 'explore', label: 'Explore', icon: '\u25CB', route: '/explore' },
+  { key: 'log', label: 'Log', icon: '\u25A6', route: '/brewlog' },
+  { key: 'profile', label: 'Profile', icon: '\u25CF', route: '/profile' },
 ];
 
+const routeToKey: Record<string, string> = {
+  '/': 'home',
+  '/explore': 'explore',
+  '/brewlog': 'log',
+  '/profile': 'profile',
+};
+
 interface TabBarProps {
-  activeTab?: string;
-  onTabPress?: (key: string) => void;
   onPressAdd: () => void;
 }
 
@@ -92,8 +99,11 @@ function TabItem({
   );
 }
 
-export default function TabBar({ activeTab = 'home', onTabPress, onPressAdd }: TabBarProps) {
+export default function TabBar({ onPressAdd }: TabBarProps) {
   const { colors } = useTheme();
+  const router = useRouter();
+  const pathname = usePathname();
+  const activeTab = routeToKey[pathname] ?? 'home';
   const addScale = useSharedValue(1);
 
   const addAnimatedStyle = useAnimatedStyle(() => ({
@@ -118,7 +128,7 @@ export default function TabBar({ activeTab = 'home', onTabPress, onPressAdd }: T
             isActive={activeTab === tab.key}
             onPress={() => {
               hapticLight();
-              onTabPress?.(tab.key);
+              router.push(tab.route as any);
             }}
           />
         ))}

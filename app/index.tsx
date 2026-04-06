@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useTheme } from '../src/hooks/useTheme';
 import { Fonts } from '../src/constants/theme';
 import { stories, recentBrews, beans, brewGradients } from '../src/constants/mockData';
@@ -23,6 +24,7 @@ import { SetupCard } from '../src/components/setup/SetupCard';
 import { BeanCard } from '../src/components/setup/BeanCard';
 import TabBar from '../src/components/layout/TabBar';
 import BrewLogSheet from '../src/components/brew/BrewLogSheet';
+import SetupSheet from '../src/components/setup/SetupSheet';
 import StoryViewer from '../src/components/social/StoryViewer';
 import { useBrewLogger } from '../src/hooks/useBrewLogger';
 
@@ -43,10 +45,15 @@ function getFormattedDate(): string {
 
 export default function HomeScreen() {
   const { colors } = useTheme();
+  const router = useRouter();
   const [activeStory, setActiveStory] = useState<Story | null>(null);
   const [seenStories, setSeenStories] = useState<Set<number>>(new Set([3, 6]));
-  const [activeTab, setActiveTab] = useState('home');
   const brewLogger = useBrewLogger();
+
+  // Setup sheet state
+  const [setupSheetOpen, setSetupSheetOpen] = useState(false);
+  const [setupMode, setSetupMode] = useState<'machine' | 'grinder' | 'bean'>('machine');
+  const [setupEditItem, setSetupEditItem] = useState<any>(null);
 
   const handleStoryPress = (story: Story) => {
     setSeenStories(prev => new Set([...prev, story.id]));
@@ -137,7 +144,7 @@ export default function HomeScreen() {
                 key={brew.id}
                 brew={brew}
                 gradientColors={brewGradients[index % brewGradients.length] as [string, string, string]}
-                onPress={() => {}}
+                onPress={() => console.log('[Home] Brew tapped:', brew.id)}
               />
             ))}
           </View>
@@ -148,6 +155,11 @@ export default function HomeScreen() {
               title="Your setup"
               subtitle="dialled in"
               action="Edit"
+              onAction={() => {
+                setSetupMode('machine');
+                setSetupEditItem(null);
+                setSetupSheetOpen(true);
+              }}
             />
           </View>
           <View style={styles.setupGrid}>
@@ -179,6 +191,11 @@ export default function HomeScreen() {
             <SectionHeader
               title="Available beans"
               action="Add +"
+              onAction={() => {
+                setSetupMode('bean');
+                setSetupEditItem(null);
+                setSetupSheetOpen(true);
+              }}
             />
           </View>
           <ScrollView
@@ -194,7 +211,11 @@ export default function HomeScreen() {
             {/* Add new beans dashed card */}
             <Pressable
               style={[styles.addBeanCard, { borderColor: colors.border }]}
-              onPress={() => {}}
+              onPress={() => {
+                setSetupMode('bean');
+                setSetupEditItem(null);
+                setSetupSheetOpen(true);
+              }}
             >
               <View style={[styles.addBeanCircle, { backgroundColor: colors.accentSoft }]}>
                 <Text style={[styles.addBeanIcon, { color: colors.accent }]}>+</Text>
@@ -212,8 +233,6 @@ export default function HomeScreen() {
 
       {/* Tab Bar */}
       <TabBar
-        activeTab={activeTab}
-        onTabPress={setActiveTab}
         onPressAdd={brewLogger.open}
       />
 
@@ -228,6 +247,18 @@ export default function HomeScreen() {
         onToggleDetails={brewLogger.toggleDetails}
         setQuickField={brewLogger.setQuickField}
         setDetailField={brewLogger.setDetailField}
+      />
+
+      {/* Setup Sheet */}
+      <SetupSheet
+        isOpen={setupSheetOpen}
+        onClose={() => setSetupSheetOpen(false)}
+        mode={setupMode}
+        editItem={setupEditItem}
+        onSaveMachine={(data) => console.log('[Setup] Save machine:', data)}
+        onSaveGrinder={(data) => console.log('[Setup] Save grinder:', data)}
+        onSaveBean={(data) => console.log('[Setup] Save bean:', data)}
+        onDelete={(id) => console.log('[Setup] Delete:', id)}
       />
 
       {/* Story Viewer */}

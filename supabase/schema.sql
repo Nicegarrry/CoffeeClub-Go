@@ -1,0 +1,191 @@
+-- CoffeeClub Supabase Schema
+-- Run this in the Supabase SQL editor to set up all tables
+
+-- Users (extends auth.users)
+create table public.users (
+  id uuid primary key references auth.users on delete cascade,
+  username text unique not null,
+  display_name text not null default '',
+  avatar_url text,
+  bio text default '',
+  location text default '',
+  created_at timestamptz not null default now()
+);
+
+alter table public.users enable row level security;
+
+create policy "Users are viewable by everyone" on public.users
+  for select using (true);
+
+create policy "Users can update own profile" on public.users
+  for update using (auth.uid() = id);
+
+create policy "Users can insert own profile" on public.users
+  for insert with check (auth.uid() = id);
+
+-- Machines
+create table public.machines (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users on delete cascade,
+  name text not null,
+  brand text default '',
+  type text default 'espresso' check (type in ('espresso', 'filter', 'both')),
+  burr_size text default '',
+  notes text default '',
+  is_active boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.machines enable row level security;
+
+create policy "Users can view own machines" on public.machines
+  for select using (auth.uid() = user_id);
+
+create policy "Users can manage own machines" on public.machines
+  for all using (auth.uid() = user_id);
+
+-- Grinders
+create table public.grinders (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users on delete cascade,
+  name text not null,
+  brand text default '',
+  burr_type text default 'conical' check (burr_type in ('flat', 'conical', 'blade')),
+  notes text default '',
+  is_active boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.grinders enable row level security;
+
+create policy "Users can view own grinders" on public.grinders
+  for select using (auth.uid() = user_id);
+
+create policy "Users can manage own grinders" on public.grinders
+  for all using (auth.uid() = user_id);
+
+-- Beans
+create table public.beans (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users on delete cascade,
+  name text not null,
+  roaster text default '',
+  origin text default '',
+  process text default 'washed' check (process in ('washed', 'natural', 'honey')),
+  roast_level text default 'medium' check (roast_level in ('light', 'light-med', 'medium', 'medium-dark', 'dark')),
+  tasting_notes text[] default '{}',
+  stock_grams integer not null default 0,
+  color text default '#B87340',
+  is_active boolean not null default false,
+  purchase_date date,
+  roast_date date,
+  created_at timestamptz not null default now()
+);
+
+alter table public.beans enable row level security;
+
+create policy "Users can view own beans" on public.beans
+  for select using (auth.uid() = user_id);
+
+create policy "Users can manage own beans" on public.beans
+  for all using (auth.uid() = user_id);
+
+-- Brews
+create table public.brews (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users on delete cascade,
+  bean_id uuid references public.beans on delete set null,
+  machine_id uuid references public.machines on delete set null,
+  grinder_id uuid references public.grinders on delete set null,
+  name text not null,
+  brew_type text default 'espresso' check (brew_type in ('espresso', 'latte', 'flat white', 'filter', 'pour over', 'cold brew', 'other')),
+  rating integer not null default 0 check (rating >= 0 and rating <= 3),
+  dose_in_grams numeric,
+  yield_out_grams numeric,
+  brew_time_seconds integer,
+  grind_setting text,
+  tasting_notes text[] default '{}',
+  photo_url text,
+  is_public boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+alter table public.brews enable row level security;
+
+create policy "Public brews viewable by everyone" on public.brews
+  for select using (is_public = true or auth.uid() = user_id);
+
+create policy "Users can manage own brews" on public.brews
+  for all using (auth.uid() = user_id);
+
+-- Follows
+create table public.follows (
+  follower_id uuid not null references public.users on delete cascade,
+  following_id uuid not null references public.users on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (follower_id, following_id)
+);
+
+alter table public.follows enable row level security;
+
+create policy "Follows are viewable by everyone" on public.follows
+  for select using (true);
+
+create policy "Users can manage own follows" on public.follows
+  for all using (auth.uid() = follower_id);
+
+-- Likes
+create table public.likes (
+  user_id uuid not null references public.users on delete cascade,
+  brew_id uuid not null references public.brews on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, brew_id)
+);
+
+alter table public.likes enable row level security;
+
+create policy "Likes are viewable by everyone" on public.likes
+  for select using (true);
+
+create policy "Users can manage own likes" on public.likes
+  for all using (auth.uid() = user_id);
+
+-- Indexes for performance
+create index idx_brews_user_id on public.brews (user_id, created_at desc);
+create index idx_brews_public on public.brews (is_public, created_at desc) where is_public = true;
+create index idx_follows_follower on public.follows (follower_id);
+create index idx_follows_following on public.follows (following_id);
+create index idx_likes_brew on public.likes (brew_id);
+create index idx_beans_user_active on public.beans (user_id) where is_active = true;
+create index idx_machines_user_active on public.machines (user_id) where is_active = true;
+create index idx_grinders_user_active on public.grinders (user_id) where is_active = true;
+
+-- Function to create user profile on signup
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.users (id, username, display_name)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'username', 'user_' || substr(new.id::text, 1, 8)),
+    coalesce(new.raw_user_meta_data->>'display_name', '')
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create or replace trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- Storage bucket for brew photos
+insert into storage.buckets (id, name, public) values ('brew-photos', 'brew-photos', true);
+
+create policy "Anyone can view brew photos" on storage.objects
+  for select using (bucket_id = 'brew-photos');
+
+create policy "Authenticated users can upload brew photos" on storage.objects
+  for insert with check (bucket_id = 'brew-photos' and auth.role() = 'authenticated');
+
+create policy "Users can delete own brew photos" on storage.objects
+  for delete using (bucket_id = 'brew-photos' and auth.uid()::text = (storage.foldername(name))[1]);
