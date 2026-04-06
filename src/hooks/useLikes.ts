@@ -18,7 +18,7 @@ export function useLike(brewId: string) {
       try {
         // Fetch count
         const { count, error: countError } = await supabase
-          .from('likes')
+          .from('cc_likes')
           .select('*', { count: 'exact', head: true })
           .eq('brew_id', brewId);
 
@@ -28,7 +28,7 @@ export function useLike(brewId: string) {
         // Check if current user liked it
         if (user) {
           const { data, error } = await supabase
-            .from('likes')
+            .from('cc_likes')
             .select('user_id')
             .eq('brew_id', brewId)
             .eq('user_id', user.id)
@@ -58,14 +58,14 @@ export function useLike(brewId: string) {
     try {
       if (wasLiked) {
         const { error } = await supabase
-          .from('likes')
+          .from('cc_likes')
           .delete()
           .eq('brew_id', brewId)
           .eq('user_id', user.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('likes')
+          .from('cc_likes')
           .insert({ brew_id: brewId, user_id: user.id });
         if (error) throw error;
       }

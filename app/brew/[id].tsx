@@ -70,9 +70,9 @@ export default function BrewDetailScreen() {
     (async () => {
       setLoading(true);
       const { data } = await supabase
-        .from('brews')
+        .from('cc_brews')
         .select(
-          '*, user:users(id, username, display_name, avatar_url), bean:beans(id, name, roaster, color), machine:machines(id, name), grinder:grinders(id, name)',
+          '*, user:cc_users(id, username, display_name, avatar_url), bean:cc_beans(id, name, roaster, color), machine:cc_machines(id, name), grinder:cc_grinders(id, name)',
         )
         .eq('id', id)
         .single();
@@ -90,7 +90,7 @@ export default function BrewDetailScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await supabase.from('brews').delete().eq('id', id);
+          await supabase.from('cc_brews').delete().eq('id', id);
           router.back();
         },
       },

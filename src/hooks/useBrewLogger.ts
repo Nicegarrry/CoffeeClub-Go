@@ -142,7 +142,7 @@ export function useBrewLogger() {
         brewTimeSeconds = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
       }
 
-      const { error } = await supabase.from('brews').insert({
+      const { error } = await supabase.from('cc_brews').insert({
         name: quickLogData.name,
         rating: quickLogData.rating,
         photo_url: photoUrl,

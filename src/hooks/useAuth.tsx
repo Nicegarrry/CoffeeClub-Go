@@ -24,7 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
-      .from('users')
+      .from('cc_users')
       .select('*')
       .eq('id', userId)
       .single();
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateProfile = useCallback(async (updates: Partial<Pick<DbUser, 'display_name' | 'username' | 'bio' | 'location' | 'avatar_url'>>) => {
     if (!user) return { error: 'Not authenticated' };
     const { error } = await supabase
-      .from('users')
+      .from('cc_users')
       .update(updates)
       .eq('id', user.id);
     if (!error && profile) {

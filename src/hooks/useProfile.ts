@@ -20,7 +20,7 @@ export function useProfile(userId?: string) {
     try {
       // Fetch user row
       const { data: userData, error: userError } = await supabase
-        .from('users')
+        .from('cc_users')
         .select('*')
         .eq('id', targetId)
         .single();
@@ -35,21 +35,21 @@ export function useProfile(userId?: string) {
       // Fetch counts in parallel
       const [brewRes, followerRes, followingRes, isFollowingRes] = await Promise.all([
         supabase
-          .from('brews')
+          .from('cc_brews')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', targetId),
         supabase
-          .from('follows')
+          .from('cc_follows')
           .select('*', { count: 'exact', head: true })
           .eq('following_id', targetId),
         supabase
-          .from('follows')
+          .from('cc_follows')
           .select('*', { count: 'exact', head: true })
           .eq('follower_id', targetId),
         // Check if current user follows this profile (only relevant for other users)
         user && user.id !== targetId
           ? supabase
-              .from('follows')
+              .from('cc_follows')
               .select('follower_id')
               .eq('follower_id', user.id)
               .eq('following_id', targetId)

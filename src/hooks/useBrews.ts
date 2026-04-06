@@ -21,7 +21,7 @@ export function useMyBrews() {
     }
     try {
       const { data, error } = await supabase
-        .from('brews')
+        .from('cc_brews')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -68,7 +68,7 @@ export function useMyBrews() {
 
       try {
         const { error } = await supabase
-          .from('brews')
+          .from('cc_brews')
           .insert({ ...brew, user_id: user.id });
         if (error) throw error;
         // Re-fetch to get the real row with server-generated id
@@ -104,15 +104,15 @@ export function useSocialFeed() {
     try {
       // Get list of followed user ids
       const { data: followData } = await supabase
-        .from('follows')
+        .from('cc_follows')
         .select('following_id')
         .eq('follower_id', user.id);
 
       const followedIds = (followData ?? []).map((f) => f.following_id);
 
       let query = supabase
-        .from('brews')
-        .select('*, user:users(id, username, display_name, avatar_url)')
+        .from('cc_brews')
+        .select('*, user:cc_users(id, username, display_name, avatar_url)')
         .eq('is_public', true)
         .order('created_at', { ascending: false })
         .limit(20);
@@ -157,7 +157,7 @@ export function useSocialFeed() {
         .channel('social-feed')
         .on(
           'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'brews' },
+          { event: 'INSERT', schema: 'public', table: 'cc_brews' },
           async (payload) => {
             const newBrew = payload.new as DbBrew;
             // Only include public brews from other users
@@ -166,7 +166,7 @@ export function useSocialFeed() {
             // Fetch the user data for this brew
             try {
               const { data: userData } = await supabase
-                .from('users')
+                .from('cc_users')
                 .select('id, username, display_name, avatar_url')
                 .eq('id', newBrew.user_id)
                 .single();

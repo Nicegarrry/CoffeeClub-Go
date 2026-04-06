@@ -21,7 +21,7 @@ export function useMachines() {
     }
     try {
       const { data, error } = await supabase
-        .from('machines')
+        .from('cc_machines')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
@@ -61,7 +61,7 @@ export function useMachines() {
       if (!user) return;
       try {
         const { error } = await supabase
-          .from('machines')
+          .from('cc_machines')
           .insert({ ...data, user_id: user.id });
         if (error) throw error;
         await fetchMachines();
@@ -75,7 +75,7 @@ export function useMachines() {
   const update = useCallback(
     async (id: string, data: Partial<DbMachine>) => {
       try {
-        const { error } = await supabase.from('machines').update(data).eq('id', id);
+        const { error } = await supabase.from('cc_machines').update(data).eq('id', id);
         if (error) throw error;
         await fetchMachines();
       } catch (err) {
@@ -88,7 +88,7 @@ export function useMachines() {
   const remove = useCallback(
     async (id: string) => {
       try {
-        const { error } = await supabase.from('machines').delete().eq('id', id);
+        const { error } = await supabase.from('cc_machines').delete().eq('id', id);
         if (error) throw error;
         await fetchMachines();
       } catch (err) {
@@ -104,12 +104,12 @@ export function useMachines() {
       try {
         // Deactivate all
         await supabase
-          .from('machines')
+          .from('cc_machines')
           .update({ is_active: false })
           .eq('user_id', user.id);
         // Activate selected
         const { error } = await supabase
-          .from('machines')
+          .from('cc_machines')
           .update({ is_active: true })
           .eq('id', id);
         if (error) throw error;
@@ -141,7 +141,7 @@ export function useGrinders() {
     }
     try {
       const { data, error } = await supabase
-        .from('grinders')
+        .from('cc_grinders')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
@@ -179,7 +179,7 @@ export function useGrinders() {
       if (!user) return;
       try {
         const { error } = await supabase
-          .from('grinders')
+          .from('cc_grinders')
           .insert({ ...data, user_id: user.id });
         if (error) throw error;
         await fetchGrinders();
@@ -193,7 +193,7 @@ export function useGrinders() {
   const update = useCallback(
     async (id: string, data: Partial<DbGrinder>) => {
       try {
-        const { error } = await supabase.from('grinders').update(data).eq('id', id);
+        const { error } = await supabase.from('cc_grinders').update(data).eq('id', id);
         if (error) throw error;
         await fetchGrinders();
       } catch (err) {
@@ -206,7 +206,7 @@ export function useGrinders() {
   const remove = useCallback(
     async (id: string) => {
       try {
-        const { error } = await supabase.from('grinders').delete().eq('id', id);
+        const { error } = await supabase.from('cc_grinders').delete().eq('id', id);
         if (error) throw error;
         await fetchGrinders();
       } catch (err) {
@@ -221,11 +221,11 @@ export function useGrinders() {
       if (!user) return;
       try {
         await supabase
-          .from('grinders')
+          .from('cc_grinders')
           .update({ is_active: false })
           .eq('user_id', user.id);
         const { error } = await supabase
-          .from('grinders')
+          .from('cc_grinders')
           .update({ is_active: true })
           .eq('id', id);
         if (error) throw error;
@@ -257,7 +257,7 @@ export function useBeans() {
     }
     try {
       const { data, error } = await supabase
-        .from('beans')
+        .from('cc_beans')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
@@ -295,7 +295,7 @@ export function useBeans() {
       if (!user) return;
       try {
         const { error } = await supabase
-          .from('beans')
+          .from('cc_beans')
           .insert({ ...data, user_id: user.id });
         if (error) throw error;
         await fetchBeans();
@@ -309,7 +309,7 @@ export function useBeans() {
   const update = useCallback(
     async (id: string, data: Partial<DbBean>) => {
       try {
-        const { error } = await supabase.from('beans').update(data).eq('id', id);
+        const { error } = await supabase.from('cc_beans').update(data).eq('id', id);
         if (error) throw error;
         await fetchBeans();
       } catch (err) {
@@ -322,7 +322,7 @@ export function useBeans() {
   const remove = useCallback(
     async (id: string) => {
       try {
-        const { error } = await supabase.from('beans').delete().eq('id', id);
+        const { error } = await supabase.from('cc_beans').delete().eq('id', id);
         if (error) throw error;
         await fetchBeans();
       } catch (err) {
@@ -337,11 +337,11 @@ export function useBeans() {
       if (!user) return;
       try {
         await supabase
-          .from('beans')
+          .from('cc_beans')
           .update({ is_active: false })
           .eq('user_id', user.id);
         const { error } = await supabase
-          .from('beans')
+          .from('cc_beans')
           .update({ is_active: true })
           .eq('id', id);
         if (error) throw error;
@@ -360,7 +360,7 @@ export function useBeans() {
       const newStock = Math.max(0, bean.stock_grams - grams);
       try {
         const { error } = await supabase
-          .from('beans')
+          .from('cc_beans')
           .update({ stock_grams: newStock })
           .eq('id', id);
         if (error) throw error;
