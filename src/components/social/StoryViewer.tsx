@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,12 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
-  Animated,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Fonts } from '../../constants/theme';
 import type { Story } from '../../constants/mockData';
@@ -23,16 +27,12 @@ interface StoryViewerProps {
 
 export default function StoryViewer({ story, onClose }: StoryViewerProps) {
   const [progress, setProgress] = useState(0);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const fadeOpacity = useSharedValue(0);
 
   // Fade in on mount
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+    fadeOpacity.value = withTiming(1, { duration: 300 });
+  }, [fadeOpacity]);
 
   // Auto-advance progress bar
   useEffect(() => {
@@ -52,8 +52,12 @@ export default function StoryViewer({ story, onClose }: StoryViewerProps) {
     return () => clearInterval(interval);
   }, [onClose]);
 
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: fadeOpacity.value,
+  }));
+
   return (
-    <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+    <Animated.View style={[styles.overlay, fadeStyle]}>
       <TouchableOpacity
         style={styles.touchArea}
         activeOpacity={1}
@@ -120,7 +124,7 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
     paddingTop: 60,
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingBottom: 40,
     justifyContent: 'space-between',
   },

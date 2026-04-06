@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
-import { Fonts } from '../../constants/theme';
+import { Fonts, Spacing, LetterSpacing } from '../../constants/theme';
 
 export function Header() {
   const { colors, isDark, toggle } = useTheme();
@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: Spacing.gutter,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: Fonts.display,
     fontSize: 18,
-    letterSpacing: -0.3,
+    letterSpacing: LetterSpacing.display,
   },
   rightSection: {
     width: 36,

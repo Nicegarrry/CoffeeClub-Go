@@ -10,7 +10,7 @@ export async function pickImage(): Promise<string | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
     allowsEditing: true,
-    aspect: [16, 9],
+    aspect: [1, 1],
     quality: 0.8,
   });
 

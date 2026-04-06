@@ -72,7 +72,7 @@ function StarRating({
 
   const handleTap = (star: number) => {
     const sv = scales[star - 1];
-    sv.value = withSpring(1.3, { damping: 8, stiffness: 300 }, () => {
+    sv.value = withSpring(1.4, { damping: 8, stiffness: 300 }, () => {
       sv.value = withSpring(1, { damping: 12 });
     });
     hapticSelection();
@@ -487,7 +487,7 @@ export default function BrewLogSheet({
             disabled={!canPost}
           >
             <LinearGradient
-              colors={canPost ? ['#D4A050', '#E8C97A', '#D4A050'] : ['#888', '#999', '#888']}
+              colors={canPost ? ['#D4A050', '#E8C97A', '#D4A050'] : [colors.disabledAccent, colors.disabledAccent, colors.disabledAccent]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.postBtn}
@@ -707,13 +707,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollInner: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     paddingBottom: 40,
   },
   // Photo
   photoZone: {
     width: '100%',
-    aspectRatio: 16 / 9,
+    aspectRatio: 1,
     borderRadius: 16,
     borderWidth: 1,
     overflow: 'hidden',

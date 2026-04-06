@@ -1,6 +1,14 @@
 import React from 'react';
-import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  withSpring,
+} from 'react-native-reanimated';
 import { useTheme } from '../../hooks/useTheme';
 import { Fonts } from '../../constants/theme';
 
@@ -16,6 +24,7 @@ interface StoryRingProps {
 const RING_SIZE = 72;
 const AVATAR_SIZE = 64;
 const RING_WIDTH = 2.5;
+const RING_WIDTH_SEEN = 1.5;
 
 export function StoryRing({
   avatar,
@@ -26,6 +35,32 @@ export function StoryRing({
   isSponsored = false,
 }: StoryRingProps) {
   const { colors } = useTheme();
+
+  // Press scale animation
+  const pressScale = useSharedValue(1);
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressScale.value }],
+  }));
+
+  // Unseen pulse animation
+  const pulseScale = useSharedValue(1);
+  React.useEffect(() => {
+    if (!seen && !isAddButton) {
+      pulseScale.value = withRepeat(
+        withSequence(
+          withTiming(1.06, { duration: 1200 }),
+          withTiming(1.0, { duration: 1200 })
+        ),
+        -1
+      );
+    } else {
+      pulseScale.value = 1;
+    }
+  }, [seen, isAddButton, pulseScale]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
 
   const renderAvatar = () => {
     if (isAddButton) {
@@ -38,7 +73,7 @@ export function StoryRing({
     return (
       <Image
         source={{ uri: avatar }}
-        style={styles.avatar}
+        style={[styles.avatar, seen && { opacity: 0.45 }]}
       />
     );
   };
@@ -54,38 +89,50 @@ export function StoryRing({
 
     if (seen) {
       return (
-        <View style={[styles.ringOuter, { borderColor: colors.storyRingSeen, borderWidth: RING_WIDTH }]}>
+        <View style={[styles.ringOuter, { borderColor: colors.storyRingSeen, borderWidth: RING_WIDTH_SEEN }]}>
           <View style={styles.ringInner}>{renderAvatar()}</View>
         </View>
       );
     }
 
     return (
-      <LinearGradient
-        colors={colors.storyRing}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientRing}
-      >
-        <View style={[styles.ringInner, { backgroundColor: colors.bg }]}>
-          {renderAvatar()}
-        </View>
-      </LinearGradient>
+      <Animated.View style={pulseStyle}>
+        <LinearGradient
+          colors={colors.storyRing}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientRing}
+        >
+          <View style={[styles.ringInner, { backgroundColor: colors.bg }]}>
+            {renderAvatar()}
+          </View>
+        </LinearGradient>
+      </Animated.View>
     );
   };
 
   return (
-    <Pressable onPress={onPress} style={styles.container}>
-      {renderRing()}
-      <Text
-        style={[
-          styles.name,
-          { color: isSponsored ? colors.accent : colors.textSub },
-        ]}
-        numberOfLines={1}
-      >
-        {isSponsored ? 'Sponsored' : name}
-      </Text>
+    <Pressable
+      onPress={onPress}
+      onPressIn={() => {
+        pressScale.value = withSpring(0.91);
+      }}
+      onPressOut={() => {
+        pressScale.value = withSpring(1);
+      }}
+    >
+      <Animated.View style={[styles.container, pressStyle]}>
+        {renderRing()}
+        <Text
+          style={[
+            styles.name,
+            { color: isSponsored ? colors.accent : colors.textSub },
+          ]}
+          numberOfLines={1}
+        >
+          {isSponsored ? 'Sponsored' : name}
+        </Text>
+      </Animated.View>
     </Pressable>
   );
 }

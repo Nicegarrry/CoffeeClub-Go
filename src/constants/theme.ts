@@ -16,6 +16,7 @@ export const Colors = {
     storyRing: ['#E0963A', '#F4D060'] as [string, string],
     storyRingSeen: 'rgba(0,0,0,0.12)',
     shadow: 'rgba(100,60,20,0.10)',
+    disabledAccent: 'rgba(184,118,46,0.35)',
   },
   dark: {
     bg: '#0F1923',
@@ -34,6 +35,7 @@ export const Colors = {
     storyRing: ['#D4A050', '#F0D070'] as [string, string],
     storyRingSeen: 'rgba(255,255,255,0.14)',
     shadow: 'rgba(0,0,0,0.35)',
+    disabledAccent: 'rgba(212,160,80,0.35)',
   },
 } as const;
 
@@ -43,6 +45,45 @@ export const Radius = {
   card: 20,
   pill: 10,
   avatar: 999,
+} as const;
+
+export const Spacing = {
+  gutter: 18,
+  cardGap: 10,
+  sectionGap: 24,
+} as const;
+
+export const LetterSpacing = {
+  display: -0.5,
+  body: 0,
+  uppercase: 1.2,
+} as const;
+
+export const Elevation = {
+  card: {
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  hero: {
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  sheet: {
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 16,
+  },
+  fab: {
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
 } as const;
 
 export const Fonts = {

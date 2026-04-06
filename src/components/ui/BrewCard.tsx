@@ -1,9 +1,12 @@
 import React from 'react';
 import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useTheme } from '../../hooks/useTheme';
-import { Fonts } from '../../constants/theme';
+import { Fonts, Elevation, LetterSpacing, Spacing } from '../../constants/theme';
 import type { Brew } from '../../constants/mockData';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface BrewCardProps {
   brew: Brew;
@@ -25,12 +28,22 @@ function StarRating({ rating }: { rating: number }) {
 
 export function BrewCard({ brew, gradientColors, onPress }: BrewCardProps) {
   const { colors } = useTheme();
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   return (
-    <Pressable onPress={onPress} style={[styles.card, { shadowColor: colors.shadow }]}>
+    <AnimatedPressable
+      onPress={onPress}
+      onPressIn={() => { scale.value = withSpring(0.98); }}
+      onPressOut={() => { scale.value = withSpring(1); }}
+      style={[styles.card, { shadowColor: colors.shadow }, animatedStyle]}
+    >
       <Image source={{ uri: brew.img }} style={styles.image} />
       <LinearGradient
-        colors={['transparent', gradientColors[1] + 'BB', gradientColors[0] + 'FF']}
+        colors={['transparent', 'rgba(0,0,0,0.0)', gradientColors[1] + 'BB', gradientColors[2] + 'EE']}
         style={styles.gradient}
       />
       {/* Method pill */}
@@ -47,7 +60,7 @@ export function BrewCard({ brew, gradientColors, onPress }: BrewCardProps) {
         <Text style={styles.brewSub} numberOfLines={1}>{brew.sub}</Text>
         <Text style={styles.brewTime}>{brew.time}</Text>
       </View>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -55,11 +68,8 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 22,
     overflow: 'hidden',
-    aspectRatio: 16 / 9,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 12,
-    elevation: 6,
+    aspectRatio: 1,
+    ...Elevation.card,
   },
   image: {
     ...StyleSheet.absoluteFillObject,
@@ -84,7 +94,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bodySemiBold,
     fontSize: 11,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: LetterSpacing.uppercase,
   },
   ratingContainer: {
     position: 'absolute',
@@ -104,13 +114,14 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: Spacing.gutter,
+    paddingBottom: Spacing.gutter,
   },
   brewName: {
     color: '#FFFFFF',
     fontFamily: Fonts.display,
     fontSize: 18,
+    letterSpacing: LetterSpacing.display,
     marginBottom: 3,
   },
   brewSub: {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
-import { Fonts } from '../../constants/theme';
+import { Fonts, Spacing, LetterSpacing } from '../../constants/theme';
 
 interface SectionHeaderProps {
   title: string;
@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: Spacing.gutter,
     marginBottom: 12,
   },
   left: {
@@ -46,6 +46,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.display,
     fontSize: 20,
     lineHeight: 26,
+    letterSpacing: LetterSpacing.display,
   },
   subtitle: {
     fontFamily: Fonts.body,
@@ -55,5 +56,6 @@ const styles = StyleSheet.create({
   action: {
     fontFamily: Fonts.bodySemiBold,
     fontSize: 13,
+    letterSpacing: LetterSpacing.uppercase,
   },
 });

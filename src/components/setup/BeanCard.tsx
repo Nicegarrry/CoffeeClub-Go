@@ -1,8 +1,11 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useTheme } from '../../hooks/useTheme';
-import { Fonts } from '../../constants/theme';
+import { Fonts, LetterSpacing } from '../../constants/theme';
 import type { Bean } from '../../constants/mockData';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface BeanCardProps {
   bean: Bean;
@@ -21,9 +24,19 @@ export function BeanCard({ bean, onPress }: BeanCardProps) {
   const stockPercent = bean.stock / bean.max;
   const isLow = bean.stock < 150;
   const barColor = isLow ? '#E07832' : colors.accent;
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   return (
-    <Pressable onPress={onPress} style={[styles.card, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+    <AnimatedPressable
+      onPress={onPress}
+      onPressIn={() => { scale.value = withSpring(0.98); }}
+      onPressOut={() => { scale.value = withSpring(1); }}
+      style={[styles.card, { backgroundColor: colors.bgCard, borderColor: colors.border }, animatedStyle]}
+    >
       {/* Roast pill */}
       <View style={[styles.roastPill, { backgroundColor: colors.accentSoft }]}>
         <View style={[styles.roastDot, { backgroundColor: ROAST_DOT_COLORS[bean.roast] || colors.accent }]} />
@@ -58,7 +71,7 @@ export function BeanCard({ bean, onPress }: BeanCardProps) {
           {bean.stock}g left
         </Text>
       </View>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -88,7 +101,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bodySemiBold,
     fontSize: 10,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: LetterSpacing.uppercase,
   },
   beanName: {
     fontFamily: Fonts.display,

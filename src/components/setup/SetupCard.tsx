@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Fonts } from '../../constants/theme';
+import { Fonts, Elevation, LetterSpacing } from '../../constants/theme';
 import { useTheme } from '../../hooks/useTheme';
 
 interface SetupCardProps {
@@ -16,7 +16,7 @@ export function SetupCard({ category, name, detail, emoji, bgColor, dotColor }: 
   const { colors } = useTheme();
 
   return (
-    <View style={[styles.card, { backgroundColor: bgColor }]}>
+    <View style={[styles.card, { backgroundColor: bgColor, shadowColor: colors.shadow }]}>
       {/* Category label with dot */}
       <View style={styles.categoryRow}>
         <View style={[styles.dot, { backgroundColor: dotColor }]} />
@@ -45,6 +45,7 @@ const styles = StyleSheet.create({
     minHeight: 130,
     overflow: 'hidden',
     flex: 1,
+    ...Elevation.card,
   },
   categoryRow: {
     flexDirection: 'row',
@@ -60,12 +61,13 @@ const styles = StyleSheet.create({
   category: {
     fontFamily: Fonts.bodySemiBold,
     fontSize: 10,
-    letterSpacing: 1,
+    letterSpacing: LetterSpacing.uppercase,
   },
   name: {
     fontFamily: Fonts.display,
     fontSize: 17,
     marginBottom: 2,
+    letterSpacing: LetterSpacing.display,
   },
   detail: {
     fontFamily: Fonts.displayItalic,
