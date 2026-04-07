@@ -1,51 +1,49 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   ScrollView,
   Image,
   Pressable,
-  FlatList,
   TextInput,
   ActivityIndicator,
   StyleSheet,
-  Dimensions,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useTheme } from '../src/hooks/useTheme';
 import { useAuth } from '../src/hooks/useAuth';
 import { useProfile } from '../src/hooks/useProfile';
 import { useMyBrews } from '../src/hooks/useBrews';
 import { useMachines, useGrinders, useBeans } from '../src/hooks/useSetup';
+import { useFollowers, useFollowing } from '../src/hooks/useFollow';
+import { useTasteProfile } from '../src/hooks/useTasteProfile';
+import { useBrewStats } from '../src/hooks/useBrewStats';
 import { pickImage } from '../src/services/device';
-import { Fonts, Spacing, Radius, Elevation, LetterSpacing } from '../src/constants/theme';
-import { SetupCard } from '../src/components/setup/SetupCard';
-import type { DbBrew, DbBean } from '../src/types/database';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const THUMB_GAP = 4;
-const THUMB_SIZE = (SCREEN_WIDTH - Spacing.gutter * 2 - THUMB_GAP) / 2;
-
-type Tab = 'brews' | 'setup' | 'about';
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-}
+import { hapticLight, hapticSelection } from '../src/services/device';
+import { Fonts, Spacing, Radius, LetterSpacing } from '../src/constants/theme';
+import { TasteRadar } from '../src/components/profile/TasteRadar';
+import { BrewCalendar } from '../src/components/profile/BrewCalendar';
+import { BadgeGrid } from '../src/components/profile/BadgeGrid';
+import type { DbBean } from '../src/types/database';
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
   const { user, profile: authProfile, signOut, updateProfile } = useAuth();
   const { profile, loading: profileLoading, refresh: refreshProfile } = useProfile();
-  const { brews, loading: brewsLoading, refresh: refreshBrews } = useMyBrews();
+  const { brews, loading: brewsLoading } = useMyBrews();
   const { machines, activeMachine } = useMachines();
   const { grinders, activeGrinder } = useGrinders();
   const { beans } = useBeans();
 
-  const [activeTab, setActiveTab] = useState<Tab>('brews');
+  const userId = user?.id ?? '';
+  const { followers } = useFollowers(userId);
+  const { following } = useFollowing(userId);
+
+  const tasteProfile = useTasteProfile(brews ?? [], beans ?? []);
+  const brewStats = useBrewStats(brews ?? [], beans ?? []);
+
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
@@ -54,6 +52,7 @@ export default function ProfileScreen() {
   const displayProfile = profile ?? authProfile;
 
   const startEditing = useCallback(() => {
+    hapticSelection();
     setEditName(displayProfile?.display_name ?? '');
     setEditBio(displayProfile?.bio ?? '');
     setEditLocation(displayProfile?.location ?? '');
@@ -75,6 +74,7 @@ export default function ProfileScreen() {
   }, [editName, editBio, editLocation, updateProfile, refreshProfile]);
 
   const handleAvatarPress = useCallback(async () => {
+    hapticLight();
     const uri = await pickImage();
     if (uri) {
       await updateProfile({ avatar_url: uri });
@@ -89,40 +89,16 @@ export default function ProfileScreen() {
     ]);
   }, [signOut]);
 
-  // Compute about stats
-  const favouriteBean = useMemo(() => {
-    if (!brews || brews.length === 0) return null;
-    const counts: Record<string, { count: number; name: string }> = {};
-    brews.forEach((b: DbBrew) => {
-      if (b.bean_id) {
-        if (!counts[b.bean_id]) counts[b.bean_id] = { count: 0, name: b.bean_id };
-        counts[b.bean_id].count++;
-      }
-    });
-    // Try to find bean name from beans list
-    if (beans) {
-      Object.keys(counts).forEach((id) => {
-        const bean = beans.find((bn: DbBean) => bn.id === id);
-        if (bean) counts[id].name = bean.name;
-      });
-    }
-    const sorted = Object.values(counts).sort((a, b) => b.count - a.count);
-    return sorted[0]?.name ?? null;
-  }, [brews, beans]);
-
-  const favouriteMethod = useMemo(() => {
-    if (!brews || brews.length === 0) return null;
-    const counts: Record<string, number> = {};
-    brews.forEach((b: DbBrew) => {
-      counts[b.brew_type] = (counts[b.brew_type] || 0) + 1;
-    });
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    return sorted[0]?.[0] ?? null;
-  }, [brews]);
-
   const initial = (displayProfile?.display_name ?? displayProfile?.username ?? '?')[0].toUpperCase();
 
-  if (profileLoading) {
+  const brewCount = profile?.brew_count ?? brews?.length ?? 0;
+  const followerCount = followers?.length ?? profile?.follower_count ?? 0;
+  const followingCount = following?.length ?? profile?.following_count ?? 0;
+
+  // Active bean (first one in the list)
+  const activeBean: DbBean | null = beans && beans.length > 0 ? beans[0] : null;
+
+  if (profileLoading || brewsLoading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
         <View style={styles.loadingWrap}>
@@ -132,51 +108,14 @@ export default function ProfileScreen() {
     );
   }
 
-  const renderBrewThumb = ({ item }: { item: DbBrew }) => (
-    <Pressable
-      style={[styles.thumbWrap, { backgroundColor: colors.bgCard2 }]}
-      onPress={() => router.push(`/brew/${item.id}`)}
-    >
-      {item.photo_url ? (
-        <Image source={{ uri: item.photo_url }} style={styles.thumbImage} />
-      ) : (
-        <LinearGradient
-          colors={[colors.accent, colors.accentSoft]}
-          style={styles.thumbImage}
-        >
-          <Text style={styles.thumbFallback}>{item.brew_type[0].toUpperCase()}</Text>
-        </LinearGradient>
-      )}
-    </Pressable>
-  );
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Header row with edit button */}
-        <View style={styles.headerRow}>
-          <Text style={[styles.screenTitle, { color: colors.text }]}>Profile</Text>
-          {!editing ? (
-            <Pressable onPress={startEditing} style={styles.editBtn}>
-              <Text style={[styles.editBtnText, { color: colors.accent }]}>Edit</Text>
-            </Pressable>
-          ) : (
-            <View style={styles.editActions}>
-              <Pressable onPress={() => setEditing(false)}>
-                <Text style={[styles.editBtnText, { color: colors.textSub }]}>Cancel</Text>
-              </Pressable>
-              <Pressable onPress={saveEdits} style={styles.saveBtn}>
-                <Text style={[styles.saveBtnText, { color: '#fff' }]}>Save</Text>
-              </Pressable>
-            </View>
-          )}
-        </View>
-
-        {/* Avatar + Info */}
-        <View style={styles.profileHeader}>
+        {/* ─── Header Section ─── */}
+        <View style={styles.headerSection}>
           <Pressable onPress={handleAvatarPress} style={styles.avatarWrap}>
             {displayProfile?.avatar_url ? (
               <Image
@@ -214,6 +153,14 @@ export default function ProfileScreen() {
                 placeholder="Location"
                 placeholderTextColor={colors.textFaint}
               />
+              <View style={styles.editActions}>
+                <Pressable onPress={() => setEditing(false)} style={styles.cancelBtn}>
+                  <Text style={[styles.cancelBtnText, { color: colors.textSub }]}>Cancel</Text>
+                </Pressable>
+                <Pressable onPress={saveEdits} style={[styles.saveBtn, { backgroundColor: colors.accent }]}>
+                  <Text style={styles.saveBtnText}>Save</Text>
+                </Pressable>
+              </View>
             </View>
           ) : (
             <View style={styles.infoSection}>
@@ -224,182 +171,152 @@ export default function ProfileScreen() {
                 @{displayProfile?.username ?? 'unknown'}
               </Text>
               {displayProfile?.bio ? (
-                <Text style={[styles.bioText, { color: colors.text }]}>{displayProfile.bio}</Text>
+                <Text style={[styles.bioText, { color: colors.textSub }]}>
+                  {displayProfile.bio}
+                </Text>
               ) : null}
               {displayProfile?.location ? (
                 <Text style={[styles.locationText, { color: colors.textFaint }]}>
-                  {displayProfile.location}
+                  {'\uD83D\uDCCD'} {displayProfile.location}
                 </Text>
+              ) : null}
+              <Pressable
+                onPress={startEditing}
+                style={[styles.editProfileBtn, { borderColor: colors.accent }]}
+              >
+                <Text style={[styles.editProfileBtnText, { color: colors.accent }]}>
+                  Edit Profile
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+
+        {/* ─── Stats Row ─── */}
+        <View style={[styles.statsRow, { borderColor: colors.border }]}>
+          <View style={styles.statItem}>
+            <Text style={[styles.statNumber, { color: colors.text }]}>{brewCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSub }]}>Brews</Text>
+          </View>
+          <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+          <Pressable style={styles.statItem} onPress={() => hapticSelection()}>
+            <Text style={[styles.statNumber, { color: colors.text }]}>{followerCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSub }]}>Followers</Text>
+          </Pressable>
+          <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+          <Pressable style={styles.statItem} onPress={() => hapticSelection()}>
+            <Text style={[styles.statNumber, { color: colors.text }]}>{followingCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSub }]}>Following</Text>
+          </Pressable>
+        </View>
+
+        {/* ─── Taste Profile Section ─── */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Taste Profile</Text>
+          <View style={styles.radarWrap}>
+            <TasteRadar profile={tasteProfile} size={200} />
+          </View>
+          {tasteProfile && (
+            <View style={styles.pillRow}>
+              {tasteProfile.preferredRoast ? (
+                <View style={[styles.pill, { backgroundColor: colors.accentSoft }]}>
+                  <Text style={[styles.pillText, { color: colors.accent }]}>
+                    {tasteProfile.preferredRoast}
+                  </Text>
+                </View>
+              ) : null}
+              {tasteProfile.preferredOrigin ? (
+                <View style={[styles.pill, { backgroundColor: colors.accentSoft }]}>
+                  <Text style={[styles.pillText, { color: colors.accent }]}>
+                    {tasteProfile.preferredOrigin}
+                  </Text>
+                </View>
+              ) : null}
+              {tasteProfile.preferredProcess ? (
+                <View style={[styles.pill, { backgroundColor: colors.accentSoft }]}>
+                  <Text style={[styles.pillText, { color: colors.accent }]}>
+                    {tasteProfile.preferredProcess}
+                  </Text>
+                </View>
               ) : null}
             </View>
           )}
         </View>
 
-        {/* Stats row */}
-        <View style={[styles.statsRow, { borderColor: colors.border }]}>
-          <Pressable style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: colors.text }]}>
-              {profile?.brew_count ?? brews?.length ?? 0}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSub }]}>brews</Text>
-          </Pressable>
-          <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-          <Pressable style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: colors.text }]}>
-              {profile?.following_count ?? 0}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSub }]}>following</Text>
-          </Pressable>
-          <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-          <Pressable style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: colors.text }]}>
-              {profile?.follower_count ?? 0}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSub }]}>followers</Text>
-          </Pressable>
+        {/* ─── Activity Section ─── */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Activity</Text>
+          <BrewCalendar brews={brews ?? []} />
         </View>
 
-        {/* Segmented tabs */}
-        <View style={[styles.tabRow, { borderColor: colors.border }]}>
-          {(['brews', 'setup', 'about'] as Tab[]).map((tab) => (
-            <Pressable
-              key={tab}
-              style={[
-                styles.tabItem,
-                activeTab === tab && { borderBottomColor: colors.accent, borderBottomWidth: 2 },
-              ]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  { color: activeTab === tab ? colors.accent : colors.textFaint },
-                ]}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </Text>
-            </Pressable>
-          ))}
+        {/* ─── Achievements Section ─── */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Achievements</Text>
+          <BadgeGrid brews={brews ?? []} beans={beans ?? []} />
         </View>
 
-        {/* Tab content */}
-        {activeTab === 'brews' && (
-          <View style={styles.tabContent}>
-            {brewsLoading ? (
-              <ActivityIndicator color={colors.accent} style={styles.tabLoader} />
-            ) : !brews || brews.length === 0 ? (
-              <Text style={[styles.emptyText, { color: colors.textFaint }]}>
-                No brews yet. Start logging!
-              </Text>
-            ) : (
-              <FlatList
-                data={brews}
-                keyExtractor={(item) => item.id}
-                renderItem={renderBrewThumb}
-                numColumns={2}
-                columnWrapperStyle={styles.thumbRow}
-                scrollEnabled={false}
-                contentContainerStyle={styles.thumbGrid}
-              />
-            )}
-          </View>
-        )}
+        {/* ─── My Setup Section ─── */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>My Setup</Text>
 
-        {activeTab === 'setup' && (
-          <View style={styles.tabContent}>
-            <View style={styles.setupGrid}>
-              <View style={styles.setupCardWrap}>
-                <SetupCard
-                  category="Machine"
-                  name={activeMachine?.name ?? 'No machine'}
-                  detail={activeMachine?.brand ?? 'Add one in settings'}
-                  emoji="☕"
-                  bgColor={colors.machBg}
-                  dotColor="#5B9BD5"
-                />
-              </View>
-              <View style={styles.setupGap} />
-              <View style={styles.setupCardWrap}>
-                <SetupCard
-                  category="Grinder"
-                  name={activeGrinder?.name ?? 'No grinder'}
-                  detail={activeGrinder?.brand ?? 'Add one in settings'}
-                  emoji="⚙️"
-                  bgColor={colors.grindBg}
-                  dotColor="#D57B5B"
-                />
-              </View>
+          {/* Machine */}
+          <View style={[styles.equipCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+            <Text style={styles.equipEmoji}>{'\u2615'}</Text>
+            <View style={styles.equipInfo}>
+              <Text style={[styles.equipName, { color: colors.text }]}>
+                {activeMachine?.name ?? 'No machine'}
+              </Text>
+              <Text style={[styles.equipBrand, { color: colors.textSub }]}>
+                {activeMachine?.brand ?? 'Add one in settings'}
+              </Text>
             </View>
-            {beans && beans.length > 0 && (
-              <View style={styles.beanSection}>
-                <Text style={[styles.subHeading, { color: colors.text }]}>Beans</Text>
-                {beans.map((bean: DbBean) => (
-                  <View
-                    key={bean.id}
-                    style={[styles.beanRow, { backgroundColor: colors.bgCard, borderColor: colors.border }]}
-                  >
-                    <View style={[styles.beanDot, { backgroundColor: bean.color || colors.accent }]} />
-                    <View style={styles.beanInfo}>
-                      <Text style={[styles.beanName, { color: colors.text }]}>{bean.name}</Text>
-                      <Text style={[styles.beanRoaster, { color: colors.textSub }]}>{bean.roaster}</Text>
-                    </View>
-                    <Text style={[styles.beanStock, { color: colors.textFaint }]}>
-                      {bean.stock_grams}g
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
           </View>
-        )}
 
-        {activeTab === 'about' && (
-          <View style={styles.tabContent}>
-            {displayProfile?.bio ? (
-              <View style={styles.aboutItem}>
-                <Text style={[styles.aboutLabel, { color: colors.textFaint }]}>BIO</Text>
-                <Text style={[styles.aboutValue, { color: colors.text }]}>{displayProfile.bio}</Text>
-              </View>
-            ) : null}
-            {displayProfile?.location ? (
-              <View style={styles.aboutItem}>
-                <Text style={[styles.aboutLabel, { color: colors.textFaint }]}>LOCATION</Text>
-                <Text style={[styles.aboutValue, { color: colors.text }]}>{displayProfile.location}</Text>
-              </View>
-            ) : null}
-            <View style={styles.aboutItem}>
-              <Text style={[styles.aboutLabel, { color: colors.textFaint }]}>MEMBER SINCE</Text>
-              <Text style={[styles.aboutValue, { color: colors.text }]}>
-                {displayProfile?.created_at ? formatDate(displayProfile.created_at) : 'Unknown'}
+          {/* Grinder */}
+          <View style={[styles.equipCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+            <Text style={styles.equipEmoji}>{'\u2699\uFE0F'}</Text>
+            <View style={styles.equipInfo}>
+              <Text style={[styles.equipName, { color: colors.text }]}>
+                {activeGrinder?.name ?? 'No grinder'}
+              </Text>
+              <Text style={[styles.equipBrand, { color: colors.textSub }]}>
+                {activeGrinder?.brand ?? 'Add one in settings'}
               </Text>
             </View>
-            <View style={styles.aboutItem}>
-              <Text style={[styles.aboutLabel, { color: colors.textFaint }]}>TOTAL BREWS</Text>
-              <Text style={[styles.aboutValue, { color: colors.text }]}>
-                {profile?.brew_count ?? brews?.length ?? 0}
-              </Text>
-            </View>
-            {favouriteBean && (
-              <View style={styles.aboutItem}>
-                <Text style={[styles.aboutLabel, { color: colors.textFaint }]}>FAVOURITE BEAN</Text>
-                <Text style={[styles.aboutValue, { color: colors.text }]}>{favouriteBean}</Text>
-              </View>
-            )}
-            {favouriteMethod && (
-              <View style={styles.aboutItem}>
-                <Text style={[styles.aboutLabel, { color: colors.textFaint }]}>FAVOURITE METHOD</Text>
-                <Text style={[styles.aboutValue, { color: colors.text }]}>
-                  {favouriteMethod.charAt(0).toUpperCase() + favouriteMethod.slice(1)}
+          </View>
+
+          {/* Active Bean */}
+          {activeBean && (
+            <View style={[styles.equipCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+              <Text style={styles.equipEmoji}>{'\uD83E\uDED8'}</Text>
+              <View style={styles.equipInfo}>
+                <Text style={[styles.equipName, { color: colors.text }]}>
+                  {activeBean.name}
+                </Text>
+                <Text style={[styles.equipBrand, { color: colors.textSub }]}>
+                  {activeBean.roaster}
                 </Text>
               </View>
-            )}
-          </View>
-        )}
+            </View>
+          )}
+        </View>
 
-        {/* Sign out */}
-        <Pressable onPress={handleSignOut} style={styles.signOutBtn}>
-          <Text style={[styles.signOutText, { color: colors.textFaint }]}>Sign Out</Text>
-        </Pressable>
+        {/* ─── Settings & Sign Out ─── */}
+        <View style={styles.section}>
+          <Pressable
+            onPress={() => {
+              hapticLight();
+              router.push('/settings');
+            }}
+            style={[styles.settingsBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]}
+          >
+            <Text style={[styles.settingsBtnText, { color: colors.text }]}>Settings</Text>
+          </Pressable>
+
+          <Pressable onPress={handleSignOut} style={styles.signOutBtn}>
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </Pressable>
+        </View>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -420,48 +337,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Header
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.gutter,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  screenTitle: {
-    fontFamily: Fonts.display,
-    fontSize: 24,
-    letterSpacing: LetterSpacing.display,
-  },
-  editBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  editBtnText: {
-    fontFamily: Fonts.bodySemiBold,
-    fontSize: 14,
-  },
-  editActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  saveBtn: {
-    backgroundColor: '#B8762E',
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: Radius.pill,
-  },
-  saveBtnText: {
-    fontFamily: Fonts.bodySemiBold,
-    fontSize: 14,
-  },
-
-  // Profile header
-  profileHeader: {
+  // ─── Header ───
+  headerSection: {
     alignItems: 'center',
     paddingHorizontal: Spacing.gutter,
+    paddingTop: 12,
     paddingBottom: 16,
   },
   avatarWrap: {
@@ -488,14 +368,14 @@ const styles = StyleSheet.create({
   },
   displayName: {
     fontFamily: Fonts.display,
-    fontSize: 24,
+    fontSize: 22,
     letterSpacing: LetterSpacing.display,
     marginBottom: 2,
   },
   username: {
-    fontFamily: Fonts.body,
+    fontFamily: Fonts.bodyMedium,
     fontSize: 14,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   bioText: {
     fontFamily: Fonts.body,
@@ -506,10 +386,22 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontFamily: Fonts.body,
-    fontSize: 12,
+    fontSize: 13,
+    marginBottom: 10,
+  },
+  editProfileBtn: {
+    borderWidth: 1,
+    borderRadius: Radius.pill,
+    paddingVertical: 7,
+    paddingHorizontal: 20,
+    marginTop: 6,
+  },
+  editProfileBtnText: {
+    fontFamily: Fonts.bodySemiBold,
+    fontSize: 13,
   },
 
-  // Edit fields
+  // ─── Edit Mode ───
   editFields: {
     width: '100%',
     gap: 10,
@@ -527,8 +419,32 @@ const styles = StyleSheet.create({
     minHeight: 70,
     textAlignVertical: 'top',
   },
+  editActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 4,
+  },
+  cancelBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  cancelBtnText: {
+    fontFamily: Fonts.bodySemiBold,
+    fontSize: 14,
+  },
+  saveBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: Radius.pill,
+  },
+  saveBtnText: {
+    fontFamily: Fonts.bodySemiBold,
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
 
-  // Stats
+  // ─── Stats Row ───
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -545,7 +461,7 @@ const styles = StyleSheet.create({
   },
   statNumber: {
     fontFamily: Fonts.display,
-    fontSize: 18,
+    fontSize: 20,
     letterSpacing: LetterSpacing.display,
   },
   statLabel: {
@@ -558,88 +474,40 @@ const styles = StyleSheet.create({
     height: 28,
   },
 
-  // Tabs
-  tabRow: {
-    flexDirection: 'row',
-    marginHorizontal: Spacing.gutter,
-    borderBottomWidth: 1,
+  // ─── Sections ───
+  section: {
+    paddingHorizontal: Spacing.gutter,
+    marginTop: Spacing.sectionGap,
+  },
+  sectionTitle: {
+    fontFamily: Fonts.bodySemiBold,
+    fontSize: 17,
     marginBottom: 12,
   },
-  tabItem: {
-    flex: 1,
+
+  // ─── Taste Pills ───
+  radarWrap: {
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    marginBottom: 12,
   },
-  tabText: {
-    fontFamily: Fonts.bodySemiBold,
-    fontSize: 13,
-    textTransform: 'uppercase',
-    letterSpacing: LetterSpacing.uppercase,
-  },
-
-  // Tab content
-  tabContent: {
-    paddingHorizontal: Spacing.gutter,
-    minHeight: 200,
-  },
-  tabLoader: {
-    marginTop: 40,
-  },
-  emptyText: {
-    fontFamily: Fonts.body,
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 40,
-  },
-
-  // Brew grid
-  thumbGrid: {
-    gap: THUMB_GAP,
-  },
-  thumbRow: {
-    gap: THUMB_GAP,
-  },
-  thumbWrap: {
-    width: THUMB_SIZE,
-    height: THUMB_SIZE,
-    borderRadius: Radius.card,
-    overflow: 'hidden',
-  },
-  thumbImage: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  thumbFallback: {
-    fontFamily: Fonts.display,
-    fontSize: 24,
-    color: '#FFFFFF',
-  },
-
-  // Setup tab
-  setupGrid: {
+  pillRow: {
     flexDirection: 'row',
-    marginBottom: 16,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
   },
-  setupCardWrap: {
-    flex: 1,
+  pill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: Radius.pill,
   },
-  setupGap: {
-    width: 10,
+  pillText: {
+    fontFamily: Fonts.bodyMedium,
+    fontSize: 12,
   },
-  beanSection: {
-    marginTop: 8,
-  },
-  subHeading: {
-    fontFamily: Fonts.display,
-    fontSize: 18,
-    letterSpacing: LetterSpacing.display,
-    marginBottom: 10,
-  },
-  beanRow: {
+
+  // ─── Equipment Cards ───
+  equipCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
@@ -647,52 +515,43 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 8,
   },
-  beanDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  equipEmoji: {
+    fontSize: 22,
     marginRight: 12,
   },
-  beanInfo: {
+  equipInfo: {
     flex: 1,
   },
-  beanName: {
+  equipName: {
     fontFamily: Fonts.bodyMedium,
     fontSize: 14,
   },
-  beanRoaster: {
+  equipBrand: {
     fontFamily: Fonts.body,
     fontSize: 12,
-  },
-  beanStock: {
-    fontFamily: Fonts.bodyMedium,
-    fontSize: 12,
+    marginTop: 1,
   },
 
-  // About tab
-  aboutItem: {
-    marginBottom: 18,
+  // ─── Settings & Sign Out ───
+  settingsBtn: {
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: Radius.card,
+    borderWidth: 1,
   },
-  aboutLabel: {
+  settingsBtnText: {
     fontFamily: Fonts.bodySemiBold,
-    fontSize: 10,
-    letterSpacing: LetterSpacing.uppercase,
-    marginBottom: 4,
-  },
-  aboutValue: {
-    fontFamily: Fonts.body,
     fontSize: 15,
   },
-
-  // Sign out
   signOutBtn: {
     alignItems: 'center',
-    paddingVertical: 20,
-    marginTop: 24,
+    paddingVertical: 16,
+    marginTop: 8,
   },
   signOutText: {
     fontFamily: Fonts.bodySemiBold,
     fontSize: 14,
+    color: '#D94444',
   },
 
   bottomSpacer: {
