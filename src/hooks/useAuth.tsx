@@ -11,7 +11,7 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, username: string, displayName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
-  updateProfile: (updates: Partial<Pick<DbUser, 'display_name' | 'username' | 'bio' | 'location' | 'avatar_url'>>) => Promise<{ error: string | null }>;
+  updateProfile: (updates: Partial<Pick<DbUser, 'display_name' | 'username' | 'bio' | 'location' | 'avatar_url' | 'preferred_method'>>) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -24,7 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
-      .from('cc_users')
+      .from('users')
       .select('*')
       .eq('id', userId)
       .single();
@@ -70,10 +70,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   }, []);
 
-  const updateProfile = useCallback(async (updates: Partial<Pick<DbUser, 'display_name' | 'username' | 'bio' | 'location' | 'avatar_url'>>) => {
+  const updateProfile = useCallback(async (updates: Partial<Pick<DbUser, 'display_name' | 'username' | 'bio' | 'location' | 'avatar_url' | 'preferred_method'>>) => {
     if (!user) return { error: 'Not authenticated' };
     const { error } = await supabase
-      .from('cc_users')
+      .from('users')
       .update(updates)
       .eq('id', user.id);
     if (!error && profile) {

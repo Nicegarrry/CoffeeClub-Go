@@ -19,7 +19,7 @@ export function useFollow(userId: string) {
     (async () => {
       try {
         const { data, error } = await supabase
-          .from('cc_follows')
+          .from('follows')
           .select('follower_id')
           .eq('follower_id', user.id)
           .eq('following_id', userId)
@@ -45,14 +45,14 @@ export function useFollow(userId: string) {
     try {
       if (wasFollowing) {
         const { error } = await supabase
-          .from('cc_follows')
+          .from('follows')
           .delete()
           .eq('follower_id', user.id)
           .eq('following_id', userId);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('cc_follows')
+          .from('follows')
           .insert({ follower_id: user.id, following_id: userId });
         if (error) throw error;
       }
@@ -82,8 +82,8 @@ export function useFollowers(userId: string) {
     (async () => {
       try {
         const { data, error } = await supabase
-          .from('cc_follows')
-          .select('follower:cc_users!cc_follows_follower_id_fkey(id, username, display_name, avatar_url, bio, location, created_at)')
+          .from('follows')
+          .select('follower:users!follows_follower_id_fkey(id, username, display_name, avatar_url, bio, location, created_at)')
           .eq('following_id', userId);
 
         if (error) throw error;
@@ -120,8 +120,8 @@ export function useFollowing(userId: string) {
     (async () => {
       try {
         const { data, error } = await supabase
-          .from('cc_follows')
-          .select('following:cc_users!cc_follows_following_id_fkey(id, username, display_name, avatar_url, bio, location, created_at)')
+          .from('follows')
+          .select('following:users!follows_following_id_fkey(id, username, display_name, avatar_url, bio, location, created_at)')
           .eq('follower_id', userId);
 
         if (error) throw error;

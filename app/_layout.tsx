@@ -7,15 +7,18 @@ import { DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold } from '@expo-g
 import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider, useTheme } from '../src/hooks/useTheme';
 import { AuthProvider, useAuth } from '../src/hooks/useAuth';
+import { useOnboarding } from '../src/hooks/useOnboarding';
 import AuthScreen from './auth';
+import OnboardingScreen from './onboarding';
 
 SplashScreen.preventAutoHideAsync();
 
 function InnerLayout() {
   const { isDark, colors } = useTheme();
   const { session, loading } = useAuth();
+  const { isComplete: onboardingComplete } = useOnboarding();
 
-  if (loading) {
+  if (loading || onboardingComplete === null) {
     return (
       <View style={[styles.container, styles.center, { backgroundColor: colors.bg }]}>
         <ActivityIndicator color={colors.accent} size="large" />
@@ -23,10 +26,28 @@ function InnerLayout() {
     );
   }
 
+  if (!session) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bg }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <AuthScreen />
+      </View>
+    );
+  }
+
+  if (!onboardingComplete) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bg }]}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <OnboardingScreen />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      {session ? <Slot /> : <AuthScreen />}
+      <Slot />
     </View>
   );
 }

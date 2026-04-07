@@ -54,7 +54,7 @@ export function useStories() {
       try {
         // Get followed user ids
         const { data: followData, error: followError } = await supabase
-          .from('cc_follows')
+          .from('follows')
           .select('following_id')
           .eq('follower_id', user.id);
 
@@ -72,8 +72,8 @@ export function useStories() {
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
         const { data: brewData, error: brewError } = await supabase
-          .from('cc_brews')
-          .select('user_id, name, created_at, user:cc_users(id, username, display_name, avatar_url)')
+          .from('brews')
+          .select('user_id, name, created_at, user:users(id, username, display_name, avatar_url)')
           .in('user_id', followedIds)
           .gte('created_at', since)
           .order('created_at', { ascending: false });

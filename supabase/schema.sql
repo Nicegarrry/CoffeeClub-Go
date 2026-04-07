@@ -160,6 +160,26 @@ create index idx_beans_user_active on public.beans (user_id) where is_active = t
 create index idx_machines_user_active on public.machines (user_id) where is_active = true;
 create index idx_grinders_user_active on public.grinders (user_id) where is_active = true;
 
+-- Equipment Catalog (pre-built list of common coffee gear)
+create table public.equipment_catalog (
+  id uuid primary key default gen_random_uuid(),
+  type text not null check (type in ('grinder', 'espresso_machine', 'pour_over', 'immersion', 'kettle', 'scale', 'accessory')),
+  brand text not null,
+  model text not null,
+  detail text default '',
+  grind_range text,
+  popularity_rank integer not null default 100,
+  created_at timestamptz not null default now()
+);
+
+alter table public.equipment_catalog enable row level security;
+
+create policy "Equipment catalog is viewable by everyone" on public.equipment_catalog
+  for select using (true);
+
+create index idx_catalog_type on public.equipment_catalog (type, popularity_rank);
+create index idx_catalog_brand on public.equipment_catalog (brand);
+
 -- Function to create user profile on signup
 create or replace function public.handle_new_user()
 returns trigger as $$
@@ -189,3 +209,6 @@ create policy "Authenticated users can upload brew photos" on storage.objects
 
 create policy "Users can delete own brew photos" on storage.objects
   for delete using (bucket_id = 'brew-photos' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Add preferred brew method to users
+alter table public.users add column if not exists preferred_method text default '';

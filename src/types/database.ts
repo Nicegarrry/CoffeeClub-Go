@@ -5,6 +5,7 @@ export interface DbUser {
   avatar_url: string | null;
   bio: string;
   location: string;
+  preferred_method: string;
   created_at: string;
 }
 
@@ -76,6 +77,17 @@ export interface DbFollow {
 export interface DbLike {
   user_id: string;
   brew_id: string;
+  created_at: string;
+}
+
+export interface DbEquipmentCatalog {
+  id: string;
+  type: 'grinder' | 'espresso_machine' | 'pour_over' | 'immersion' | 'kettle' | 'scale' | 'accessory';
+  brand: string;
+  model: string;
+  detail: string;
+  grind_range: string | null;
+  popularity_rank: number;
   created_at: string;
 }
 
