@@ -9,6 +9,8 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +19,7 @@ import { useTheme } from '../../src/hooks/useTheme';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useLike } from '../../src/hooks/useLikes';
 import { supabase } from '../../src/services/supabase';
+import { hapticLight, hapticSelection } from '../../src/services/device';
 import { Fonts, Spacing, Radius, LetterSpacing, Elevation } from '../../src/constants/theme';
 import type { BrewWithDetails } from '../../src/types/database';
 
@@ -65,23 +68,36 @@ export default function BrewDetailScreen() {
   const [brew, setBrew] = useState<BrewWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  // Edit modal state
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editRating, setEditRating] = useState(0);
+  const [editDose, setEditDose] = useState('');
+  const [editYield, setEditYield] = useState('');
+  const [editTime, setEditTime] = useState('');
+  const [editGrind, setEditGrind] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
+  const fetchBrew = useCallback(async () => {
     if (!id) return;
-    (async () => {
-      setLoading(true);
-      const { data } = await supabase
-        .from('brews')
-        .select(
-          '*, user:users(id, username, display_name, avatar_url), bean:beans(id, name, roaster, color), machine:machines(id, name), grinder:grinders(id, name)',
-        )
-        .eq('id', id)
-        .single();
-      if (data) {
-        setBrew(data as unknown as BrewWithDetails);
-      }
-      setLoading(false);
-    })();
+    setLoading(true);
+    const { data } = await supabase
+      .from('brews')
+      .select(
+        '*, user:users(id, username, display_name, avatar_url), bean:beans(id, name, roaster, color), machine:machines(id, name), grinder:grinders(id, name)',
+      )
+      .eq('id', id)
+      .single();
+    if (data) {
+      setBrew(data as unknown as BrewWithDetails);
+    }
+    setLoading(false);
   }, [id]);
+
+  useEffect(() => {
+    fetchBrew();
+  }, [fetchBrew]);
 
   const handleDelete = useCallback(() => {
     Alert.alert('Delete Brew', 'Are you sure? This cannot be undone.', [
@@ -96,6 +112,58 @@ export default function BrewDetailScreen() {
       },
     ]);
   }, [id]);
+
+  const handleEdit = useCallback(() => {
+    if (!brew) return;
+    setEditName(brew.name);
+    setEditRating(brew.rating);
+    setEditDose(brew.dose_in_grams?.toString() ?? '');
+    setEditYield(brew.yield_out_grams?.toString() ?? '');
+    setEditTime(brew.brew_time_seconds?.toString() ?? '');
+    setEditGrind(brew.grind_setting ?? '');
+    setEditNotes(brew.tasting_notes?.join(', ') ?? '');
+    setEditing(true);
+  }, [brew]);
+
+  const handleSave = useCallback(async () => {
+    if (!brew) return;
+    setEditSaving(true);
+    const { error } = await supabase
+      .from('brews')
+      .update({
+        name: editName.trim(),
+        rating: editRating,
+        dose_in_grams: editDose ? parseFloat(editDose) : null,
+        yield_out_grams: editYield ? parseFloat(editYield) : null,
+        brew_time_seconds: editTime ? parseInt(editTime) : null,
+        grind_setting: editGrind || null,
+        tasting_notes: editNotes
+          ? editNotes.split(',').map((s) => s.trim()).filter(Boolean)
+          : [],
+      })
+      .eq('id', brew.id);
+    setEditSaving(false);
+    if (!error) {
+      setEditing(false);
+      fetchBrew();
+    }
+  }, [brew, editName, editRating, editDose, editYield, editTime, editGrind, editNotes, fetchBrew]);
+
+  const handleBrewAgain = useCallback(() => {
+    if (!brew) return;
+    hapticLight();
+    router.push({
+      pathname: '/',
+      params: {
+        brewAgain: brew.id,
+        method: brew.brew_type,
+        dose: brew.dose_in_grams?.toString() ?? '',
+        yield: brew.yield_out_grams?.toString() ?? '',
+        grind: brew.grind_setting ?? '',
+        beanId: brew.bean_id ?? '',
+      },
+    });
+  }, [brew]);
 
   const isOwn = brew?.user_id === user?.id;
 
@@ -289,12 +357,15 @@ export default function BrewDetailScreen() {
             <View style={styles.ownActions}>
               <Pressable
                 style={[styles.actionBtn, { borderColor: colors.border }]}
-                onPress={() => {
-                  // Edit is a placeholder -- would open an edit modal/screen
-                  Alert.alert('Edit', 'Edit functionality coming soon.');
-                }}
+                onPress={handleEdit}
               >
                 <Text style={[styles.actionBtnText, { color: colors.accent }]}>Edit</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.actionBtn, { borderColor: colors.accent, backgroundColor: colors.accentSoft }]}
+                onPress={handleBrewAgain}
+              >
+                <Text style={[styles.actionBtnText, { color: colors.accent }]}>Brew Again</Text>
               </Pressable>
               <Pressable
                 style={[styles.actionBtn, styles.deleteBtn]}
@@ -308,6 +379,116 @@ export default function BrewDetailScreen() {
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* Edit Modal */}
+      <Modal visible={editing} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.bg }]}>
+          {/* Modal header */}
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Pressable onPress={() => setEditing(false)}>
+              <Text style={[styles.modalHeaderBtn, { color: colors.textSub }]}>Cancel</Text>
+            </Pressable>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Brew</Text>
+            <Pressable onPress={handleSave} disabled={editSaving}>
+              {editSaving ? (
+                <ActivityIndicator color={colors.accent} size="small" />
+              ) : (
+                <Text style={[styles.modalHeaderBtn, { color: colors.accent }]}>Save</Text>
+              )}
+            </Pressable>
+          </View>
+
+          <ScrollView
+            style={styles.modalBody}
+            contentContainerStyle={styles.modalBodyContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Name */}
+            <Text style={[styles.editLabel, { color: colors.textFaint }]}>NAME</Text>
+            <TextInput
+              style={[styles.editInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.bgCard }]}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Brew name"
+              placeholderTextColor={colors.textFaint}
+            />
+
+            {/* Rating */}
+            <Text style={[styles.editLabel, { color: colors.textFaint }]}>RATING</Text>
+            <View style={styles.editStarsRow}>
+              {[1, 2, 3].map((star) => (
+                <Pressable
+                  key={star}
+                  onPress={() => {
+                    hapticSelection();
+                    setEditRating(star);
+                  }}
+                >
+                  <Text style={styles.editStar}>
+                    {star <= editRating ? '\u2605' : '\u2606'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Dose */}
+            <Text style={[styles.editLabel, { color: colors.textFaint }]}>DOSE (g)</Text>
+            <TextInput
+              style={[styles.editInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.bgCard }]}
+              value={editDose}
+              onChangeText={setEditDose}
+              placeholder="e.g. 18"
+              placeholderTextColor={colors.textFaint}
+              keyboardType="decimal-pad"
+            />
+
+            {/* Yield */}
+            <Text style={[styles.editLabel, { color: colors.textFaint }]}>YIELD (g)</Text>
+            <TextInput
+              style={[styles.editInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.bgCard }]}
+              value={editYield}
+              onChangeText={setEditYield}
+              placeholder="e.g. 36"
+              placeholderTextColor={colors.textFaint}
+              keyboardType="decimal-pad"
+            />
+
+            {/* Time */}
+            <Text style={[styles.editLabel, { color: colors.textFaint }]}>TIME (seconds)</Text>
+            <TextInput
+              style={[styles.editInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.bgCard }]}
+              value={editTime}
+              onChangeText={setEditTime}
+              placeholder="e.g. 30"
+              placeholderTextColor={colors.textFaint}
+              keyboardType="number-pad"
+            />
+
+            {/* Grind */}
+            <Text style={[styles.editLabel, { color: colors.textFaint }]}>GRIND SETTING</Text>
+            <TextInput
+              style={[styles.editInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.bgCard }]}
+              value={editGrind}
+              onChangeText={setEditGrind}
+              placeholder="e.g. 2.5"
+              placeholderTextColor={colors.textFaint}
+            />
+
+            {/* Tasting notes */}
+            <Text style={[styles.editLabel, { color: colors.textFaint }]}>TASTING NOTES</Text>
+            <TextInput
+              style={[styles.editInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.bgCard }]}
+              value={editNotes}
+              onChangeText={setEditNotes}
+              placeholder="chocolate, caramel, nutty"
+              placeholderTextColor={colors.textFaint}
+            />
+            <Text style={[styles.editHint, { color: colors.textFaint }]}>
+              Separate notes with commas
+            </Text>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -552,5 +733,64 @@ const styles = StyleSheet.create({
 
   bottomSpacer: {
     height: 60,
+  },
+
+  // Edit modal
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.gutter,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  modalHeaderBtn: {
+    fontFamily: Fonts.bodySemiBold,
+    fontSize: 15,
+  },
+  modalTitle: {
+    fontFamily: Fonts.display,
+    fontSize: 17,
+    letterSpacing: LetterSpacing.display,
+  },
+  modalBody: {
+    flex: 1,
+  },
+  modalBodyContent: {
+    paddingHorizontal: Spacing.gutter,
+    paddingTop: 20,
+    paddingBottom: 40,
+  },
+  editLabel: {
+    fontFamily: Fonts.bodySemiBold,
+    fontSize: 10,
+    letterSpacing: LetterSpacing.uppercase,
+    marginBottom: 6,
+    marginTop: 16,
+  },
+  editInput: {
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    fontFamily: Fonts.body,
+    fontSize: 15,
+  },
+  editStarsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 4,
+  },
+  editStar: {
+    color: '#F4D060',
+    fontSize: 32,
+  },
+  editHint: {
+    fontFamily: Fonts.body,
+    fontSize: 12,
+    marginTop: 4,
   },
 });

@@ -22,11 +22,8 @@ import { BrewCard } from '../src/components/ui/BrewCard';
 import { SectionHeader } from '../src/components/ui/SectionHeader';
 import { SetupCard } from '../src/components/setup/SetupCard';
 import { BeanCard } from '../src/components/setup/BeanCard';
-import TabBar from '../src/components/layout/TabBar';
-import BrewLogSheet from '../src/components/brew/BrewLogSheet';
 import SetupSheet from '../src/components/setup/SetupSheet';
 import StoryViewer from '../src/components/social/StoryViewer';
-import { useBrewLogger } from '../src/hooks/useBrewLogger';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -48,8 +45,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const [activeStory, setActiveStory] = useState<Story | null>(null);
   const [seenStories, setSeenStories] = useState<Set<number>>(new Set([3, 6]));
-  const brewLogger = useBrewLogger();
-
   // Setup sheet state
   const [setupSheetOpen, setSetupSheetOpen] = useState(false);
   const [setupMode, setSetupMode] = useState<'machine' | 'grinder' | 'bean'>('machine');
@@ -230,24 +225,6 @@ export default function HomeScreen() {
           <View style={styles.bottomSpacer} />
         </ScrollView>
       </SafeAreaView>
-
-      {/* Tab Bar */}
-      <TabBar
-        onPressAdd={brewLogger.open}
-      />
-
-      {/* Brew Log Sheet */}
-      <BrewLogSheet
-        isOpen={brewLogger.isOpen}
-        showDetails={brewLogger.showDetails}
-        quickLogData={brewLogger.quickLogData}
-        detailData={brewLogger.detailData}
-        onClose={brewLogger.close}
-        onSubmit={brewLogger.submit}
-        onToggleDetails={brewLogger.toggleDetails}
-        setQuickField={brewLogger.setQuickField}
-        setDetailField={brewLogger.setDetailField}
-      />
 
       {/* Setup Sheet */}
       <SetupSheet

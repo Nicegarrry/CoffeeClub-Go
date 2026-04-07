@@ -8,6 +8,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import { ThemeProvider, useTheme } from '../src/hooks/useTheme';
 import { AuthProvider, useAuth } from '../src/hooks/useAuth';
 import { useOnboarding } from '../src/hooks/useOnboarding';
+import { useBrewLogger } from '../src/hooks/useBrewLogger';
+import TabBar from '../src/components/layout/TabBar';
+import BrewLogSheet from '../src/components/brew/BrewLogSheet';
 import AuthScreen from './auth';
 import OnboardingScreen from './onboarding';
 
@@ -44,10 +47,24 @@ function InnerLayout() {
     );
   }
 
+  const brewLogger = useBrewLogger();
+
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Slot />
+      <TabBar onPressAdd={brewLogger.open} />
+      <BrewLogSheet
+        isOpen={brewLogger.isOpen}
+        showDetails={brewLogger.showDetails}
+        quickLogData={brewLogger.quickLogData}
+        detailData={brewLogger.detailData}
+        onClose={brewLogger.close}
+        onSubmit={brewLogger.submit}
+        onToggleDetails={brewLogger.toggleDetails}
+        setQuickField={brewLogger.setQuickField}
+        setDetailField={brewLogger.setDetailField}
+      />
     </View>
   );
 }
