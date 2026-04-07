@@ -23,9 +23,9 @@ import { useBrewStats } from '../src/hooks/useBrewStats';
 import { pickImage } from '../src/services/device';
 import { hapticLight, hapticSelection } from '../src/services/device';
 import { Fonts, Spacing, Radius, LetterSpacing } from '../src/constants/theme';
-import { TasteRadar } from '../src/components/profile/TasteRadar';
-import { BrewCalendar } from '../src/components/profile/BrewCalendar';
-import { BadgeGrid } from '../src/components/profile/BadgeGrid';
+import TasteRadar from '../src/components/profile/TasteRadar';
+import BrewCalendar from '../src/components/profile/BrewCalendar';
+import BadgeGrid from '../src/components/profile/BadgeGrid';
 import type { DbBean } from '../src/types/database';
 
 export default function ProfileScreen() {
