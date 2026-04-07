@@ -139,6 +139,49 @@ export interface DbBookmark {
   created_at: string;
 }
 
+export interface DbCafe {
+  id: string;
+  name: string;
+  address: string;
+  lat: number | null;
+  lng: number | null;
+  phone: string;
+  website: string;
+  hours_json: Record<string, string>;
+  description: string;
+  cover_photo_url: string | null;
+  claimed_by_user_id: string | null;
+  created_at: string;
+}
+
+export interface CafeWithStats extends DbCafe {
+  avg_rating: number;
+  review_count: number;
+  checkin_count: number;
+}
+
+export interface DbCafeReview {
+  id: string;
+  user_id: string;
+  cafe_id: string;
+  rating: number;
+  body: string;
+  tags: string[];
+  created_at: string;
+}
+
+export interface CafeReviewWithUser extends DbCafeReview {
+  user: Pick<DbUser, 'id' | 'username' | 'display_name' | 'avatar_url'>;
+}
+
+export interface DbCheckin {
+  id: string;
+  user_id: string;
+  cafe_id: string;
+  brew_id: string | null;
+  created_at: string;
+}
+
 // Joined types for common queries
 export interface BrewWithUser extends DbBrew {
   user: Pick<DbUser, 'id' | 'username' | 'display_name' | 'avatar_url'>;

@@ -27,17 +27,20 @@ interface Tab {
   route: string;
 }
 
-const tabs: Tab[] = [
+const leftTabs: Tab[] = [
   { key: 'home', label: 'Home', icon: '\u2302', route: '/' },
-  { key: 'explore', label: 'Explore', icon: '\u25CB', route: '/explore' },
-  { key: 'log', label: 'Log', icon: '\u25A6', route: '/brewlog' },
+  { key: 'explore', label: 'Feed', icon: '\u25CB', route: '/explore' },
+];
+
+const rightTabs: Tab[] = [
+  { key: 'cafes', label: 'Cafes', icon: '\u2615', route: '/cafes' },
   { key: 'profile', label: 'Profile', icon: '\u25CF', route: '/profile' },
 ];
 
 const routeToKey: Record<string, string> = {
   '/': 'home',
   '/explore': 'explore',
-  '/brewlog': 'log',
+  '/cafes': 'cafes',
   '/profile': 'profile',
 };
 
@@ -121,7 +124,30 @@ export default function TabBar({ onPressAdd }: TabBarProps) {
   return (
     <View style={styles.container}>
       <View style={[styles.pill, { backgroundColor: colors.tabBg }]}>
-        {tabs.map((tab) => (
+        {leftTabs.map((tab) => (
+          <TabItem
+            key={tab.key}
+            tab={tab}
+            isActive={activeTab === tab.key}
+            onPress={() => {
+              hapticLight();
+              router.push(tab.route as any);
+            }}
+          />
+        ))}
+
+        <AnimatedPressable onPress={handleAddPress} style={[styles.addWrapper, addAnimatedStyle]}>
+          <LinearGradient
+            colors={['#D4A050', '#E8C97A', '#D4A050']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.addButton}
+          >
+            <Text style={styles.addIcon}>+</Text>
+          </LinearGradient>
+        </AnimatedPressable>
+
+        {rightTabs.map((tab) => (
           <TabItem
             key={tab.key}
             tab={tab}
@@ -133,17 +159,6 @@ export default function TabBar({ onPressAdd }: TabBarProps) {
           />
         ))}
       </View>
-
-      <AnimatedPressable onPress={handleAddPress} style={[styles.addWrapper, addAnimatedStyle]}>
-        <LinearGradient
-          colors={['#D4A050', '#E8C97A', '#D4A050']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.addButton}
-        >
-          <Text style={styles.addIcon}>+</Text>
-        </LinearGradient>
-      </AnimatedPressable>
     </View>
   );
 }
@@ -154,9 +169,7 @@ const styles = StyleSheet.create({
     bottom: Platform.OS === 'ios' ? 28 : 16,
     left: 16,
     right: 16,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
   pill: {
     flex: 1,
@@ -203,6 +216,7 @@ const styles = StyleSheet.create({
   addWrapper: {
     width: 56,
     height: 56,
+    marginTop: -12,
   },
   addButton: {
     width: 56,

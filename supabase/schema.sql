@@ -263,6 +263,88 @@ create policy "Users can view own bookmarks" on public.bookmarks
 create policy "Users can manage own bookmarks" on public.bookmarks
   for all using (auth.uid() = user_id);
 
+-- Cafes
+create table public.cafes (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  address text not null default '',
+  lat double precision,
+  lng double precision,
+  phone text default '',
+  website text default '',
+  hours_json jsonb default '{}',
+  description text default '',
+  cover_photo_url text,
+  claimed_by_user_id uuid references public.users on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.cafes enable row level security;
+
+create policy "Cafes are viewable by everyone" on public.cafes
+  for select using (true);
+
+create policy "Authenticated can insert cafes" on public.cafes
+  for insert with check (auth.role() = 'authenticated');
+
+create policy "Claimers can update own cafes" on public.cafes
+  for update using (auth.uid() = claimed_by_user_id);
+
+create index idx_cafes_location on public.cafes (lat, lng);
+
+-- Cafe beans (what beans a cafe stocks)
+create table public.cafe_beans (
+  cafe_id uuid not null references public.cafes on delete cascade,
+  bean_id uuid not null references public.beans on delete cascade,
+  primary key (cafe_id, bean_id)
+);
+
+alter table public.cafe_beans enable row level security;
+
+create policy "Cafe beans viewable by everyone" on public.cafe_beans
+  for select using (true);
+
+-- Cafe reviews
+create table public.cafe_reviews (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users on delete cascade,
+  cafe_id uuid not null references public.cafes on delete cascade,
+  rating integer not null check (rating >= 1 and rating <= 5),
+  body text default '',
+  tags text[] default '{}',
+  created_at timestamptz not null default now()
+);
+
+alter table public.cafe_reviews enable row level security;
+
+create policy "Reviews are viewable by everyone" on public.cafe_reviews
+  for select using (true);
+
+create policy "Users can manage own reviews" on public.cafe_reviews
+  for all using (auth.uid() = user_id);
+
+create index idx_cafe_reviews_cafe on public.cafe_reviews (cafe_id, created_at desc);
+
+-- Check-ins
+create table public.checkins (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users on delete cascade,
+  cafe_id uuid not null references public.cafes on delete cascade,
+  brew_id uuid references public.brews on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.checkins enable row level security;
+
+create policy "Check-ins are viewable by everyone" on public.checkins
+  for select using (true);
+
+create policy "Users can manage own check-ins" on public.checkins
+  for all using (auth.uid() = user_id);
+
+create index idx_checkins_cafe on public.checkins (cafe_id, created_at desc);
+create index idx_checkins_user on public.checkins (user_id, created_at desc);
+
 -- Function to create user profile on signup
 create or replace function public.handle_new_user()
 returns trigger as $$
