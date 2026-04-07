@@ -4,135 +4,107 @@ import {
   Text,
   Pressable,
   FlatList,
+  RefreshControl,
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../src/hooks/useTheme';
-import { Fonts, Spacing } from '../src/constants/theme';
-import { Header } from '../src/components/layout/Header';
-import { BrewCard } from '../src/components/ui/BrewCard';
-import { EmptySocial } from '../src/components/ui/EmptyState';
+import { Fonts, Spacing, LetterSpacing } from '../src/constants/theme';
 import { useSocialFeed } from '../src/hooks/useBrews';
-import { useLike } from '../src/hooks/useLikes';
+import { FeedCard } from '../src/components/social/FeedCard';
 import type { BrewWithUser } from '../src/types/database';
 
-const brewGradients: [string, string, string][] = [
-  ['#2C1A08', '#5C3D2E', '#7B5B3A'],
-  ['#1A2C3D', '#2E4A5C', '#3A6B7B'],
-  ['#2C0F1A', '#5C2E3D', '#7B3A5B'],
-  ['#1A2C0F', '#3D5C2E', '#5B7B3A'],
-];
-
-function formatRelativeTime(dateStr: string): string {
-  const now = Date.now();
-  const then = new Date(dateStr).getTime();
-  const diffMs = now - then;
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return 'just now';
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDays = Math.floor(diffHr / 24);
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return `${Math.floor(diffDays / 7)}w ago`;
-}
-
-function LikeButton({ brewId }: { brewId: string }) {
-  const { isLiked, likeCount, toggle } = useLike(brewId);
-  const { colors } = useTheme();
+function FeedHeader() {
+  const { colors, isDark, toggle } = useTheme();
 
   return (
-    <View style={styles.likeRow}>
-      <Pressable onPress={toggle} hitSlop={8} style={styles.likeBtn}>
-        <Text style={[styles.likeHeart, { color: isLiked ? '#E05050' : colors.textFaint }]}>
-          {isLiked ? '\u2665' : '\u2661'}
-        </Text>
-      </Pressable>
-      <Text style={[styles.likeCount, { color: colors.textSub }]}>
-        {likeCount > 0 ? likeCount : ''}
-      </Text>
+    <View style={[styles.header, { backgroundColor: colors.glass, borderBottomColor: colors.border }]}>
+      <View style={styles.headerSpacer} />
+      <Text style={[styles.headerTitle, { color: colors.accent }]}>Feed</Text>
+      <View style={styles.headerRight}>
+        <Pressable hitSlop={10} style={[styles.bellBtn, { backgroundColor: colors.accentSoft }]}>
+          <Text style={styles.bellIcon}>{'\uD83D\uDD14'}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
-function FeedItem({ brew, index }: { brew: BrewWithUser; index: number }) {
+function EmptyFeed() {
   const { colors } = useTheme();
   const router = useRouter();
 
-  const gradientColors = brewGradients[index % brewGradients.length];
-
-  const brewCardData = {
-    id: brew.id as any,
-    img: brew.photo_url ?? 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400',
-    label: brew.name,
-    method: brew.brew_type,
-    sub: brew.tasting_notes?.join(', ') ?? '',
-    rating: brew.rating,
-    time: formatRelativeTime(brew.created_at),
-  };
-
   return (
-    <View style={styles.feedItem}>
-      {/* User attribution row */}
+    <View style={styles.emptyContainer}>
+      <Text style={[styles.emptyEmoji]}>{'☕'}</Text>
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>
+        No brews yet
+      </Text>
+      <Text style={[styles.emptyBody, { color: colors.textSub }]}>
+        Follow people to see their brews
+      </Text>
       <Pressable
-        onPress={() => router.push(`/user/${brew.user_id}` as any)}
-        style={styles.userRow}
+        onPress={() => router.push('/search' as any)}
+        style={[styles.discoverBtn, { backgroundColor: colors.accent }]}
       >
-        <View style={[styles.avatar, { backgroundColor: colors.accentSoft }]}>
-          <Text style={[styles.avatarLetter, { color: colors.accent }]}>
-            {(brew.user?.display_name ?? brew.user?.username ?? '?').charAt(0).toUpperCase()}
-          </Text>
-        </View>
-        <View style={styles.userInfo}>
-          <Text style={[styles.displayName, { color: colors.text }]} numberOfLines={1}>
-            {brew.user?.display_name ?? 'Unknown'}
-          </Text>
-          <Text style={[styles.username, { color: colors.textFaint }]} numberOfLines={1}>
-            @{brew.user?.username ?? 'user'} · {formatRelativeTime(brew.created_at)}
-          </Text>
-        </View>
+        <Text style={[styles.discoverText, { color: '#FFF' }]}>Discover</Text>
       </Pressable>
-
-      {/* Brew Card */}
-      <Pressable onPress={() => router.push(`/brew/${brew.id}` as any)}>
-        <BrewCard
-          brew={brewCardData}
-          gradientColors={gradientColors}
-        />
-      </Pressable>
-
-      {/* Like row */}
-      <LikeButton brewId={brew.id} />
     </View>
   );
 }
 
 export default function ExploreScreen() {
   const { colors } = useTheme();
+  const router = useRouter();
   const { brews, loading, refresh } = useSocialFeed();
 
+  const handlePressUser = useCallback(
+    (userId: string) => router.push(`/user/${userId}` as any),
+    [router],
+  );
+
+  const handlePressBrew = useCallback(
+    (brewId: string) => router.push(`/brew/${brewId}` as any),
+    [router],
+  );
+
+  const handlePressComment = useCallback(
+    (brewId: string) => router.push(`/brew/${brewId}` as any),
+    [router],
+  );
+
   const renderItem = useCallback(
-    ({ item, index }: { item: BrewWithUser; index: number }) => (
-      <FeedItem brew={item} index={index} />
+    ({ item }: { item: BrewWithUser }) => (
+      <FeedCard
+        brew={item}
+        onPressUser={handlePressUser}
+        onPressBrew={handlePressBrew}
+        onPressComment={handlePressComment}
+      />
     ),
-    [],
+    [handlePressUser, handlePressBrew, handlePressComment],
   );
 
   const keyExtractor = useCallback((item: BrewWithUser) => item.id, []);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
-      <Header />
+      <FeedHeader />
       <FlatList
         data={brews}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        onRefresh={refresh}
-        refreshing={loading}
-        ListEmptyComponent={!loading ? <EmptySocial /> : null}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={refresh}
+            tintColor={colors.accent}
+          />
+        }
+        ListEmptyComponent={!loading ? <EmptyFeed /> : null}
         ListFooterComponent={<View style={styles.bottomSpacer} />}
       />
     </SafeAreaView>
@@ -143,59 +115,69 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.gutter,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  headerSpacer: {
+    width: 36,
+  },
+  headerTitle: {
+    fontFamily: Fonts.display,
+    fontSize: 18,
+    letterSpacing: LetterSpacing.display,
+  },
+  headerRight: {
+    width: 36,
+    alignItems: 'flex-end',
+  },
+  bellBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellIcon: {
+    fontSize: 18,
+  },
   listContent: {
     paddingHorizontal: Spacing.gutter,
     paddingTop: 12,
   },
-  feedItem: {
-    marginBottom: 20,
-  },
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingTop: 80,
+    paddingHorizontal: 32,
   },
-  avatarLetter: {
+  emptyEmoji: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyTitle: {
     fontFamily: Fonts.bodySemiBold,
-    fontSize: 14,
+    fontSize: 18,
+    marginBottom: 8,
   },
-  userInfo: {
-    marginLeft: 10,
-    flex: 1,
-  },
-  displayName: {
-    fontFamily: Fonts.bodySemiBold,
-    fontSize: 14,
-  },
-  username: {
+  emptyBody: {
     fontFamily: Fonts.body,
-    fontSize: 12,
-    marginTop: 1,
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 24,
   },
-  likeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    paddingLeft: 4,
+  discoverBtn: {
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 24,
   },
-  likeBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-  },
-  likeHeart: {
-    fontSize: 22,
-  },
-  likeCount: {
-    fontFamily: Fonts.bodyMedium,
-    fontSize: 13,
-    marginLeft: 6,
+  discoverText: {
+    fontFamily: Fonts.bodySemiBold,
+    fontSize: 14,
   },
   bottomSpacer: {
     height: 112,

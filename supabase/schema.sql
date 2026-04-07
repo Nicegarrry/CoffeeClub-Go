@@ -180,6 +180,89 @@ create policy "Equipment catalog is viewable by everyone" on public.equipment_ca
 create index idx_catalog_type on public.equipment_catalog (type, popularity_rank);
 create index idx_catalog_brand on public.equipment_catalog (brand);
 
+-- Comments on brews
+create table public.comments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users on delete cascade,
+  brew_id uuid not null references public.brews on delete cascade,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.comments enable row level security;
+
+create policy "Comments are viewable by everyone" on public.comments
+  for select using (true);
+
+create policy "Users can manage own comments" on public.comments
+  for all using (auth.uid() = user_id);
+
+create index idx_comments_brew on public.comments (brew_id, created_at);
+
+-- Stories (ephemeral 24h content)
+create table public.stories (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users on delete cascade,
+  photo_url text,
+  caption text default '',
+  type text not null default 'general' check (type in ('brew', 'checkin', 'bean', 'general')),
+  brew_id uuid references public.brews on delete set null,
+  bean_id uuid references public.beans on delete set null,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default (now() + interval '24 hours')
+);
+
+alter table public.stories enable row level security;
+
+create policy "Non-expired stories are viewable by everyone" on public.stories
+  for select using (expires_at > now());
+
+create policy "Users can manage own stories" on public.stories
+  for all using (auth.uid() = user_id);
+
+create index idx_stories_user on public.stories (user_id, created_at desc);
+create index idx_stories_active on public.stories (expires_at) where expires_at > now();
+
+-- Notifications
+create table public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users on delete cascade,
+  type text not null check (type in ('like', 'comment', 'follow', 'mention')),
+  actor_id uuid not null references public.users on delete cascade,
+  brew_id uuid references public.brews on delete cascade,
+  read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.notifications enable row level security;
+
+create policy "Users can view own notifications" on public.notifications
+  for select using (auth.uid() = user_id);
+
+create policy "Users can update own notifications" on public.notifications
+  for update using (auth.uid() = user_id);
+
+create policy "Authenticated can insert notifications" on public.notifications
+  for insert with check (auth.role() = 'authenticated');
+
+create index idx_notifications_user on public.notifications (user_id, read, created_at desc);
+
+-- Bookmarks
+create table public.bookmarks (
+  user_id uuid not null references public.users on delete cascade,
+  brew_id uuid not null references public.brews on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, brew_id)
+);
+
+alter table public.bookmarks enable row level security;
+
+create policy "Users can view own bookmarks" on public.bookmarks
+  for select using (auth.uid() = user_id);
+
+create policy "Users can manage own bookmarks" on public.bookmarks
+  for all using (auth.uid() = user_id);
+
 -- Function to create user profile on signup
 create or replace function public.handle_new_user()
 returns trigger as $$

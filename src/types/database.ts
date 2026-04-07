@@ -91,6 +91,54 @@ export interface DbEquipmentCatalog {
   created_at: string;
 }
 
+export interface DbComment {
+  id: string;
+  user_id: string;
+  brew_id: string;
+  body: string;
+  created_at: string;
+}
+
+export interface CommentWithUser extends DbComment {
+  user: Pick<DbUser, 'id' | 'username' | 'display_name' | 'avatar_url'>;
+}
+
+export interface DbStory {
+  id: string;
+  user_id: string;
+  photo_url: string | null;
+  caption: string;
+  type: 'brew' | 'checkin' | 'bean' | 'general';
+  brew_id: string | null;
+  bean_id: string | null;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface StoryWithUser extends DbStory {
+  user: Pick<DbUser, 'id' | 'username' | 'display_name' | 'avatar_url'>;
+}
+
+export interface DbNotification {
+  id: string;
+  user_id: string;
+  type: 'like' | 'comment' | 'follow' | 'mention';
+  actor_id: string;
+  brew_id: string | null;
+  read: boolean;
+  created_at: string;
+}
+
+export interface NotificationWithActor extends DbNotification {
+  actor: Pick<DbUser, 'id' | 'username' | 'display_name' | 'avatar_url'>;
+}
+
+export interface DbBookmark {
+  user_id: string;
+  brew_id: string;
+  created_at: string;
+}
+
 // Joined types for common queries
 export interface BrewWithUser extends DbBrew {
   user: Pick<DbUser, 'id' | 'username' | 'display_name' | 'avatar_url'>;
