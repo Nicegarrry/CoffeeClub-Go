@@ -20,6 +20,7 @@ function InnerLayout() {
   const { isDark, colors } = useTheme();
   const { session, loading } = useAuth();
   const { isComplete: onboardingComplete } = useOnboarding();
+  const brewLogger = useBrewLogger();
 
   if (loading || onboardingComplete === null) {
     return (
@@ -46,8 +47,6 @@ function InnerLayout() {
       </View>
     );
   }
-
-  const brewLogger = useBrewLogger();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
